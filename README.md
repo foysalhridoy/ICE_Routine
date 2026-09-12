@@ -281,7 +281,7 @@ Attribution appreciated but not required.
 
 ```
 ╔═══════════════════════════════════════════╗
-║   Built with ❤️ for ICE students at DIU   ║
+║   Built for ICE students at DIU   ║
 ║   Department of Information &             ║
 ║   Communication Engineering               ║
 ║   Daffodil International University       ║
@@ -290,7 +290,7 @@ Attribution appreciated but not required.
 
 ### 👨‍💻 Developer
 
-**Hridoy** · ICE, DIU
+**Hridoy** · CSE, DIU
 
 [![GitHub](https://img.shields.io/badge/GitHub-foysalhridoy-181717?style=flat-square&logo=github)](https://github.com/foysalhridoy)
 
