@@ -766,7 +766,6 @@ function renderBatchRoutine() {
                         <span>${cls.time}</span>
                       </div>
                     </div>
-                    <div class="class-card-name">${course.title || cls.courseName || cls.courseCode}</div>
                     <div class="class-card-bottom">
                       <div class="class-card-room">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -775,10 +774,7 @@ function renderBatchRoutine() {
                         </svg>
                         <span>${cls.room}</span>
                       </div>
-                      <button class="teacher-interactive-pill" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="View ${facName}">
-                        ${fac.photoUrl ? `<img src="${fac.photoUrl}" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;">` : ''}
-                        <span>${cls.teacher}</span>
-                      </button>
+                      <span class="teacher-initial-tag">${cls.teacher}</span>
                     </div>
                   </div>
                 `;
@@ -822,7 +818,6 @@ function renderBatchRoutine() {
               </td>` : ""}
             <td class="course-cell-code">
               <div class="course-code-main"><strong>${cls.courseCode}</strong></div>
-              <div class="course-title-sub">${course.title || ""}</div>
             </td>
             <td class="time-cell-text">
               <div>${cls.time}</div>
@@ -830,10 +825,7 @@ function renderBatchRoutine() {
             </td>
             <td class="room-cell-text">${cls.room}</td>
             <td>
-              <button class="teacher-interactive-pill" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="Click to view ${facName}">
-                ${fac.photoUrl ? `<img src="${fac.photoUrl}" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;">` : ''}
-                <span>${cls.teacher}</span>
-              </button>
+              <span class="teacher-initial-tag">${cls.teacher}</span>
             </td>
           </tr>
         `;
@@ -1116,7 +1108,6 @@ function renderTeacherView() {
         <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
         <td class="course-cell-code">
           <div class="course-code-main"><strong>${c.courseCode}</strong></div>
-          <div class="course-title-sub">${getCourseInfo(c.courseCode).title || ""}</div>
         </td>
         <td class="room-cell-text">${c.room}</td>
       </tr>
@@ -1239,12 +1230,9 @@ function renderRoomView() {
         <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
         <td class="course-cell-code">
           <div class="course-code-main"><strong>${c.courseCode}</strong></div>
-          <div class="course-title-sub">${getCourseInfo(c.courseCode).title || ""}</div>
         </td>
         <td>
-          <button class="teacher-interactive-pill" onclick="openFacultyModal('${c.teacher}', '${c.courseCode}')">
-            ${c.teacher}
-          </button>
+          <span class="teacher-initial-tag">${c.teacher}</span>
         </td>
       </tr>
     `).join("");
