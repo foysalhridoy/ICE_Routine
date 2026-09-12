@@ -243,62 +243,53 @@ body {
 }
 
 /* ==========================================================================
-   FUTURISTIC REAL-TIME STATUS BADGES & "TODAY" HIGHLIGHTS (WOW FACTOR)
+   MINIMALIST REAL-TIME STATUS BADGES
    ========================================================================== */
 
 .live-class-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  padding: 0.26rem 0.7rem;
-  border-radius: 999px;
-  line-height: 1.25;
-  letter-spacing: 0.02em;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.22rem 0.6rem;
+  border-radius: 6px;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
   white-space: nowrap;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.2s ease;
 }
 
 .badge-icon-svg {
   flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .badge-divider {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
+  width: 1px;
+  height: 10px;
   background: currentColor;
-  opacity: 0.45;
-  margin: 0 0.05rem;
+  opacity: 0.25;
+  margin: 0 0.1rem;
 }
 
 .badge-detail {
-  font-weight: 600;
-  opacity: 0.92;
-  font-size: 0.71rem;
+  font-weight: 500;
+  opacity: 0.85;
+  font-size: 0.68rem;
 }
 
-/* 🟢 RUNNING CLASS / LIVE NOW */
+/* 🟢 LIVE NOW — green dot + solid text */
 .live-class-badge.badge-now {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(5, 150, 105, 0.1) 100%);
-  color: #047857;
-  border: 1.5px solid rgba(16, 185, 129, 0.48);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  animation: livePillGlow 3s infinite ease-in-out;
-}
-
-@keyframes livePillGlow {
-  0%, 100% { box-shadow: 0 4px 12px rgba(16, 185, 129, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
-  50% { box-shadow: 0 4px 18px rgba(16, 185, 129, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.8); }
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
 }
 
 .badge-beacon {
   position: relative;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -306,11 +297,10 @@ body {
 }
 
 .beacon-core {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 8px #34d399;
+  background: #16a34a;
   z-index: 2;
 }
 
@@ -319,46 +309,42 @@ body {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: rgba(16, 185, 129, 0.75);
-  animation: beaconWave 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  background: rgba(22, 163, 74, 0.5);
+  animation: beaconWave 2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 @keyframes beaconWave {
-  0% { transform: scale(0.9); opacity: 0.95; }
-  75%, 100% { transform: scale(2.6); opacity: 0; }
+  0% { transform: scale(0.9); opacity: 0.8; }
+  75%, 100% { transform: scale(2.4); opacity: 0; }
 }
 
-/* ⏳ NEXT UP (Electric Amber) */
+/* ⏳ NEXT UP — amber, subtle */
 .live-class-badge.badge-next {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.08) 100%);
-  color: #b45309;
-  border: 1.5px solid rgba(245, 158, 11, 0.45);
-  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
 }
 
 .badge-indicator-amber {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #f59e0b;
-  box-shadow: 0 0 6px #fbbf24;
-  animation: pulse-live 1.8s infinite ease-in-out;
+  background: #d97706;
   flex-shrink: 0;
 }
 
-/* 🕒 UPCOMING (Clean Tech Slate) */
+/* 🕒 UPCOMING — neutral slate */
 .live-class-badge.badge-later {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: #f8fafc;
   color: #475569;
-  border: 1px solid #cbd5e1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
 }
 
-/* ✓ COMPLETED / FINISHED (Sleek Matte) */
+/* ✓ COMPLETED — soft grey, fully visible */
 .live-class-badge.badge-done {
-  background: linear-gradient(135deg, rgba(148, 163, 184, 0.14) 0%, rgba(203, 213, 225, 0.1) 100%);
+  background: #f1f5f9;
   color: #64748b;
-  border: 1px solid rgba(148, 163, 184, 0.32);
+  border: 1px solid #e2e8f0;
 }
 
 /* ==========================================================================
@@ -462,105 +448,67 @@ body {
    ROW & CARD HIGHLIGHT STATES (RUNNING, NEXT UP, FINISHED)
    ========================================================================== */
 
-/* 🟢 RUNNING ROW (Table) */
+/* 🟢 RUNNING ROW (Table) — clean green left border */
 .row-running-class {
-  background: linear-gradient(90deg, rgba(16, 185, 129, 0.16) 0%, rgba(16, 185, 129, 0.04) 70%, transparent 100%) !important;
-  animation: liveRowAmbient 3s infinite ease-in-out;
-  position: relative;
+  background: #f0fdf4 !important;
 }
 
-@keyframes liveRowAmbient {
-  0%, 100% { background-color: rgba(16, 185, 129, 0.04); }
-  50% { background-color: rgba(16, 185, 129, 0.09); }
-}
-
-.row-running-class td {
-  background: transparent !important;
-  border-top: 2px solid #10b981 !important;
-  border-bottom: 2px solid #10b981 !important;
-  font-weight: 600;
-}
-
-.row-running-class .course-cell-code {
-  box-shadow: inset 5px 0 0 #10b981;
+.row-running-class td:first-child {
+  border-left: 3px solid #16a34a !important;
 }
 
 .row-running-class .course-cell-code strong {
-  color: #047857;
+  color: #15803d;
   font-weight: 800;
-  font-size: 0.95rem;
 }
 
 /* 🟢 RUNNING CARD (Mobile) */
 .mobile-class-card.is-active-now {
-  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%) !important;
-  border: 1.5px solid #10b981 !important;
-  border-left: 6px solid #10b981 !important;
-  box-shadow: 0 12px 28px -4px rgba(16, 185, 129, 0.22), 0 4px 10px rgba(16, 185, 129, 0.08) !important;
-  transform: translateY(-2px);
+  border-left: 3px solid #16a34a !important;
+  background: #f0fdf4 !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
-/* ⏳ NEXT UP ROW (Table) */
+/* ⏳ NEXT UP ROW (Table) — amber left border */
 .row-next-class {
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.09) 0%, transparent 100%) !important;
+  background: #fffdf0 !important;
 }
 
-.row-next-class td {
-  border-top: 1.5px dashed rgba(245, 158, 11, 0.45) !important;
-  border-bottom: 1.5px dashed rgba(245, 158, 11, 0.45) !important;
+.row-next-class td:first-child {
+  border-left: 3px solid #d97706 !important;
 }
 
 .row-next-class .course-cell-code strong {
-  color: #b45309;
+  color: #92400e;
   font-weight: 700;
 }
 
 /* ⏳ NEXT UP CARD (Mobile) */
 .mobile-class-card.is-next-card {
-  background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%) !important;
-  border: 1.5px solid #f59e0b !important;
-  border-left: 5px solid #f59e0b !important;
-  box-shadow: 0 8px 20px -3px rgba(245, 158, 11, 0.15) !important;
+  border-left: 3px solid #d97706 !important;
+  background: #fffdf5 !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
-/* ✓ FINISHED ROW (Table) */
+/* ✓ COMPLETED ROW (Table) — fully visible, just slightly muted */
 .row-finished-class {
-  opacity: 0.52;
-  background: #fbfbfc !important;
-  filter: grayscale(20%);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.row-finished-class:hover {
-  opacity: 0.95;
-  filter: grayscale(0%);
-  background: #ffffff !important;
+  background: inherit;
 }
 
 .row-finished-class td {
-  color: #64748b !important;
+  color: #94a3b8 !important;
 }
 
 .row-finished-class .course-cell-code strong {
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 600;
 }
 
-/* ✓ FINISHED CARD (Mobile) */
+/* ✓ COMPLETED CARD (Mobile) — fully visible */
 .mobile-class-card.is-finished-card {
-  opacity: 0.52;
   background: #f8fafc !important;
   border-color: #e2e8f0 !important;
   box-shadow: none !important;
-  filter: grayscale(20%);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.mobile-class-card.is-finished-card:hover {
-  opacity: 0.95;
-  filter: grayscale(0%);
-  background: #ffffff !important;
-  box-shadow: var(--shadow-sm) !important;
 }
 
 .day-cell-inner {
@@ -2454,7 +2402,7 @@ body {
 }
 
 /* ==========================================================================
-   PRINT STYLESHEET (Clean A4 Paper Export)
+   PRINT STYLESHEET (Clean A4 Paper Export - Fresh, No Live Badges)
    ========================================================================== */
 @media print {
   body {
@@ -2462,14 +2410,52 @@ body {
     color: #000000 !important;
   }
 
+  /* Hide all UI elements */
   .site-header,
   .control-card,
   .action-toolbar,
   .stats-banner,
   .site-footer,
   .toast-container,
-  .no-print {
+  .no-print,
+  .routine-view-toggle-bar,
+  .batch-selector-section,
+  .sheet-config-section,
+  #btnScrollTop {
     display: none !important;
+  }
+
+  /* Hide live status badges completely in print */
+  .live-class-badge,
+  .badge-now,
+  .badge-next,
+  .badge-later,
+  .badge-done,
+  .today-tag-modern,
+  .today-tag-card-modern {
+    display: none !important;
+  }
+
+  /* Remove today-highlight row colors — show clean alternating rows only */
+  .row-running-class,
+  .row-next-class,
+  .row-finished-class {
+    background-color: inherit !important;
+    border-left: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Restore full readable text for completed rows in print */
+  .row-finished-class td,
+  .row-finished-class .course-cell-code strong {
+    color: #0f172a !important;
+    font-weight: 600 !important;
+  }
+
+  /* Remove today cell highlight */
+  .is-today-day-cell {
+    background: inherit !important;
+    border-left: none !important;
   }
 
   .main-wrapper {
@@ -2485,8 +2471,16 @@ body {
     margin: 0 !important;
   }
 
+  /* Table should expand to full width in print */
   .table-scroll-container {
     border: 2px solid #000 !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  .routine-grid-table {
+    width: 100% !important;
+    table-layout: fixed !important;
   }
 
   .routine-grid-table th,
@@ -2495,4 +2489,15 @@ body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Make teacher pills plain text in print */
+  .teacher-interactive-pill {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    font-weight: 600 !important;
+    color: #0f172a !important;
+    cursor: default !important;
+  }
 }
+

@@ -1339,11 +1339,12 @@ function renderRoomView() {
 
 /**
  * EXPORT: High-Res PNG Image
+ * Uses a completely flat table (NO rowspan/colspan) with 100% inline styles
+ * so html2canvas renders it perfectly on all devices.
  */
 async function downloadAsImage() {
-  const card = document.getElementById("routineCardToExport");
-  if (!card) {
-    showToast("Please switch to Batch View to download image", "error");
+  if (!state.routine) {
+    showToast("No routine loaded yet", "error");
     return;
   }
 
@@ -1354,27 +1355,184 @@ async function downloadAsImage() {
       throw new Error("html2canvas library is loading or blocked.");
     }
 
-    const canvas = await html2canvas(card, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-      logging: false
+    const batch = state.selectedBatch;
+    const schedule = state.routine.batches[batch];
+    if (!schedule) {
+      showToast("No schedule for selected batch", "error");
+      return;
+    }
+
+    const days = state.routine.days;
+    const semester = state.routine.semester || "Fall-2026";
+
+    // --- Day color palette (matching the app's day colors) ---
+    const dayColors = {
+      Saturday:  { bg: "#c3b9d6", text: "#26193d" },
+      Sunday:    { bg: "#c7dcb8", text: "#1d3610" },
+      Monday:    { bg: "#f7d2b5", text: "#5c2a00" },
+      Tuesday:   { bg: "#b5cfdc", text: "#0a2a3d" },
+      Wednesday: { bg: "#dcc5b5", text: "#3d1f00" },
+      Thursday:  { bg: "#b5dcc5", text: "#0a3d1f" },
+    };
+
+    // --- Collect unique courses ---
+    const courseCodeSet = new Set();
+    days.forEach(day => {
+      (schedule[day] || []).forEach(item => {
+        if (item.courseCode) courseCodeSet.add(item.courseCode);
+      });
+    });
+    const courseList = Array.from(courseCodeSet).map(code => getCourseInfo(code));
+    courseList.sort((a, b) => a.code.localeCompare(b.code));
+    const totalCredits = courseList.reduce((sum, c) => sum + (c.credit || 0), 0);
+
+    // --- Base styles (all inline) ---
+    const S = {
+      card:     "font-family:'Lexend',Arial,sans-serif;background:#fff;padding:28px 32px;border-radius:12px;color:#0f172a;",
+      header:   "display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #e2e8f0;",
+      h2:       "font-size:18px;font-weight:800;color:#0f172a;margin:0 0 4px 0;",
+      subhead:  "font-size:12px;color:#64748b;margin:0;",
+      badgeBox: "text-align:right;",
+      batchB:   "display:inline-block;font-size:22px;font-weight:900;color:#0284c7;border:2px solid #0284c7;border-radius:8px;padding:6px 18px;letter-spacing:1px;",
+      termB:    "display:block;font-size:10px;font-weight:700;color:#64748b;letter-spacing:2px;text-transform:uppercase;margin-top:4px;",
+
+      courseWrap: "margin-bottom:18px;",
+      courseHead: "display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;",
+      coursePill: "background:#e0f2fe;color:#0284c7;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;",
+      ol:         "margin:0;padding-left:20px;",
+      li:         "font-size:12px;color:#334155;margin-bottom:4px;display:flex;justify-content:space-between;",
+      crBadge:    "color:#0284c7;font-weight:700;font-size:11px;",
+
+      table:   "width:100%;border-collapse:collapse;border:1.5px solid #94a3b8;",
+      th:      "background:#1e40af;color:#fff;font-size:12px;font-weight:700;padding:10px 12px;text-align:left;border:1px solid #1d4ed8;letter-spacing:0.5px;",
+      tdBase:  "font-size:12px;padding:9px 12px;border:1px solid #e2e8f0;vertical-align:middle;",
+      dayTd:   "font-size:12px;font-weight:700;padding:9px 12px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle;text-align:center;",
+      codeTd:  "font-size:12px;font-weight:700;color:#0284c7;padding:9px 12px;border:1px solid #e2e8f0;vertical-align:middle;",
+      offTd:   "font-size:12px;color:#94a3b8;padding:9px 12px;border:1px solid #e2e8f0;vertical-align:middle;text-align:center;font-style:italic;",
+      footer:  "display:flex;justify-content:space-between;margin-top:14px;font-size:10.5px;color:#64748b;padding-top:10px;border-top:1px solid #e2e8f0;",
+    };
+
+    // --- Row bg alternation ---
+    const rowBgs = ["#f0f7ff", "#f5f3ff"];
+    let rowIdx = 0;
+
+    // --- Build course list HTML ---
+    const courseHtml = `
+      <div style="${S.courseWrap}">
+        <div style="${S.courseHead}">
+          <span>Course details:</span>
+          <span style="${S.coursePill}">${courseList.length} Courses &bull; ${totalCredits} Credit Hours</span>
+        </div>
+        <ol style="${S.ol}">
+          ${courseList.map(c => `
+            <li style="${S.li}">
+              <span><strong style="color:#0284c7">${c.code}</strong> &ndash; ${c.title}</span>
+              <span style="${S.crBadge}">${c.credit} Cr</span>
+            </li>
+          `).join("")}
+        </ol>
+      </div>`;
+
+    // --- Build flat table rows (NO rowspan, NO colspan) ---
+    let rowsHtml = "";
+
+    days.forEach(day => {
+      const classes = schedule[day] || [];
+      const dc = dayColors[day] || { bg: "#e2e8f0", text: "#0f172a" };
+
+      if (classes.length === 0) {
+        // Offday row
+        rowsHtml += `
+          <tr>
+            <td style="${S.dayTd}background:${dc.bg};color:${dc.text};">${day}</td>
+            <td colspan="4" style="${S.offTd}">Offday</td>
+          </tr>`;
+      } else {
+        classes.forEach((cls, idx) => {
+          const bg = rowBgs[rowIdx % 2];
+          rowIdx++;
+          const fac = getFacultyInfo(cls.teacher);
+          const facName = fac && fac.name ? fac.name : cls.teacher;
+          rowsHtml += `
+            <tr>
+              <td style="${S.dayTd}background:${dc.bg};color:${dc.text};">${day}</td>
+              <td style="${S.codeTd}background:${bg};">${cls.courseCode}</td>
+              <td style="${S.tdBase}background:${bg};">${cls.time}</td>
+              <td style="${S.tdBase}background:${bg};">${cls.room}</td>
+              <td style="${S.tdBase}background:${bg};font-weight:600;">${cls.teacher}</td>
+            </tr>`;
+        });
+      }
     });
 
+    // --- Full HTML ---
+    const fullHtml = `
+      <div style="${S.card}">
+        <div style="${S.header}">
+          <div>
+            <h2 style="${S.h2}">Department of Information and Communication Engineering</h2>
+            <p style="${S.subhead}">Daffodil International University &bull; Class Routine (${semester})</p>
+          </div>
+          <div style="${S.badgeBox}">
+            <span style="${S.batchB}">${batch}</span>
+            <span style="${S.termB}">Weekly Schedule</span>
+          </div>
+        </div>
+        ${courseHtml}
+        <table style="${S.table}">
+          <thead>
+            <tr>
+              <th style="${S.th}">Day</th>
+              <th style="${S.th}">Course</th>
+              <th style="${S.th}">Time</th>
+              <th style="${S.th}">Room No.</th>
+              <th style="${S.th}">Teacher</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div style="${S.footer}">
+          <span>Routine for <strong>${batch}</strong> &bull; DIU Smart Routine Engine</span>
+          <span>Standard Theory: 1h 30m | Laboratory: 3h&ndash;4h Session</span>
+        </div>
+      </div>`;
+
+    // --- Off-screen container ---
+    const offscreen = document.createElement("div");
+    offscreen.style.cssText = "position:fixed;top:-99999px;left:-99999px;width:860px;z-index:-9999;";
+    offscreen.innerHTML = fullHtml;
+    document.body.appendChild(offscreen);
+
+    // Let layout settle
+    await new Promise(r => setTimeout(r, 400));
+
+    const canvas = await html2canvas(offscreen, {
+      scale: 2.5,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      width: 860,
+      height: offscreen.scrollHeight,
+      windowWidth: 860,
+      windowHeight: offscreen.scrollHeight
+    });
+
+    document.body.removeChild(offscreen);
+
     const link = document.createElement("a");
-    link.download = `DIU_ICE_${state.selectedBatch}_Routine.png`;
+    link.download = `DIU_ICE_${batch}_Routine.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
-    showToast("Routine image downloaded!", "success");
+    showToast("✅ Routine image downloaded!", "success");
   } catch (err) {
     console.error(err);
     showToast("Failed to generate image: " + err.message, "error");
   }
 }
 
-/**
- * EXPORT: Copy Routine Text for WhatsApp / Messenger
- */
+
+
 function copyRoutineAsText() {
   if (!state.routine) return;
   const batch = state.selectedBatch;
