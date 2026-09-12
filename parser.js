@@ -1,6 +1,7 @@
 /**
  * Routine Parser for DIU ICE Routine
- * Bulletproof matrix and cell parser with full time/room/teacher normalization
+ * Bulletproof matrix and cell parser with strict custom time preservation,
+ * uniform AM/PM standardization, accurate room/teacher extraction, and multi-span support.
  */
 
 function parseCSV(text) {
@@ -74,50 +75,99 @@ function convertToCSVUrl(url) {
 }
 
 /**
- * Clean and format time string (removes extra parens, standardizes spacing, fixes 12:30 AM typo to PM)
+ * Standardizes any university class time string into uniform, strict:
+ * "HH:MM AM/PM - HH:MM AM/PM"
+ * Handles typos like 12:30 AM daytime, single-digit hours, missing AM/PM, and multiple parens.
  */
-function cleanTimeString(rawTime) {
+function standardizeClassTime(rawTime) {
   if (!rawTime) return "";
-  let t = rawTime.replace(/[()]/g, "").trim();
+  let t = rawTime.replace(/[()[\]]/g, "").trim();
   
-  // Fix 12:30 AM typo in daytime classes
-  t = t.replace(/12:(\d{2})\s*AM/i, "12:$1 PM");
+  // Fix daytime 12:XX AM typo to PM (e.g. 12:30 AM during day routine -> 12:30 PM)
+  t = t.replace(/12:(\d{2})\s*AM/i, (match, mins) => `12:${mins} PM`);
   
-  // Standardize hyphens and spacing
-  t = t.replace(/\s*[-–—]\s*/, " - ");
-  return t;
+  const parts = t.split(/\s*[-–—]\s*/);
+  if (parts.length === 2) {
+    const formatTimePart = (p) => {
+      const m = p.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (!m) return p.trim();
+      let h = parseInt(m[1], 10);
+      let mins = m[2];
+      let ap = m[3] ? m[3].toUpperCase() : "";
+
+      // Infer AM/PM based on university daytime schedule (8:00 AM - 6:00 PM)
+      if (!ap) {
+        if (h >= 8 && h <= 11) {
+          ap = "AM";
+        } else if (h === 12 || (h >= 1 && h <= 7)) {
+          ap = "PM";
+        }
+      }
+      return `${h < 10 ? '0' + h : '' + h}:${mins} ${ap}`.trim();
+    };
+
+    return `${formatTimePart(parts[0])} - ${formatTimePart(parts[1])}`;
+  }
+  return t.replace(/\s*[-–—]\s*/, " - ");
 }
 
+const cleanTimeString = standardizeClassTime;
+
 /**
- * Parse a single cell into one or more class entries
+ * Parse a single cell into one or more class entries.
+ * STRICT RULE: If the Excel cell specifies a custom time (e.g. 08:30 AM-12:30 PM, 10:20 AM-12:20 PM),
+ * that explicit time is ALWAYS strictly preserved and never overridden.
  */
 function parseCellClasses(cellText, defaultTimeSlot, slotSpanTime = null) {
   if (!cellText || !cellText.trim()) return [];
   const text = cellText.trim();
   if (/prayer\s*break/i.test(text)) return [];
 
+  const normDefaultTime = standardizeClassTime(defaultTimeSlot);
+  const normSpanTime = slotSpanTime ? standardizeClassTime(slotSpanTime) : null;
+
   // Special cases for Capstone / Industrial Training
   if (/capstone|thesis|project/i.test(text)) {
     const roomMatch = text.match(/\(([A-Za-z0-9]+)\)/);
-    const teacherMatch = text.match(/\b([A-Z]{2,4})\b/);
+    let teacher = "Committee";
+    const teachersFound = text.replace(/ICE\s*4\d{3}/i, "").match(/\b[A-Za-z]{2,4}\b/g) || [];
+    for (const t of teachersFound) {
+      const up = t.toUpperCase();
+      if (!["ICE", "EEE", "ENG", "MAT", "PHY", "GED", "HUM", "BBA", "TBA"].includes(up)) {
+        teacher = up;
+        break;
+      }
+    }
+    const capTime = normSpanTime || normDefaultTime || "01:10 PM - 05:40 PM";
     return [{
       courseCode: "ICE 4999",
       courseName: "Capstone Project / Internship / Thesis",
       room: roomMatch ? roomMatch[1] : "TBA",
-      teacher: teacherMatch ? teacherMatch[1] : "Committee",
-      time: slotSpanTime || defaultTimeSlot || "Full Slot",
+      teacher: teacher,
+      time: capTime,
+      customTimeSpecified: false,
       raw: text
     }];
   }
   if (/industrial\s*training/i.test(text)) {
     const roomMatch = text.match(/\(([A-Za-z0-9]+)\)/);
-    const teacherMatch = text.match(/\b([A-Z]{2,4})\b/);
+    let teacher = "Dept";
+    const teachersFound = text.replace(/ICE\s*4\d{3}/i, "").match(/\b[A-Za-z]{2,4}\b/g) || [];
+    for (const t of teachersFound) {
+      const up = t.toUpperCase();
+      if (!["ICE", "EEE", "ENG", "MAT", "PHY", "GED", "HUM", "BBA", "TBA"].includes(up)) {
+        teacher = up;
+        break;
+      }
+    }
+    const itTime = normSpanTime || normDefaultTime || "08:20 AM - 09:50 AM";
     return [{
       courseCode: "ICE 4998",
       courseName: "Industrial Training II",
       room: roomMatch ? roomMatch[1] : "TBA",
-      teacher: teacherMatch ? teacherMatch[1] : "Dept",
-      time: slotSpanTime || defaultTimeSlot || "Full Slot",
+      teacher: teacher,
+      time: itTime,
+      customTimeSpecified: false,
       raw: text
     }];
   }
@@ -130,16 +180,16 @@ function parseCellClasses(cellText, defaultTimeSlot, slotSpanTime = null) {
     const trimmedChunk = chunk.trim();
     if (!trimmedChunk) continue;
 
-    // 1. Course code: e.g. ICE 1144, EEE 2243, MAT 1031, BBA 101
+    // 1. Course code: e.g. ICE 1144, EEE 2243, MAT 1031, BBA 101, ICE 2143
     const codeMatch = trimmedChunk.match(/([A-Z]{2,4}\s*\d{3,4}[A-Z]?)/i);
     if (!codeMatch) continue;
     const courseCode = codeMatch[1].toUpperCase().replace(/\s+/, " ");
 
-    // 2. Custom time override in parentheses e.g. "(08:30 AM-12:30 AM)" or "(01:10PM - 03:10 PM)"
+    // 2. Custom time override in parentheses, brackets, or raw string e.g. "(08:30 AM-12:30 AM)" or "((01:20 PM-03:20 PM)"
     let customTime = null;
-    const timeMatch = trimmedChunk.match(/\(?(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[-–—]\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)\)?/i);
+    const timeMatch = trimmedChunk.match(/[\(\[]*(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[-–—]\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)[\)\]]*/i);
     if (timeMatch) {
-      customTime = cleanTimeString(timeMatch[1]);
+      customTime = standardizeClassTime(timeMatch[1]);
     }
 
     // 3. Room: typically (302), (402), (AB1), (205), (304), (407)
@@ -153,38 +203,35 @@ function parseCellClasses(cellText, defaultTimeSlot, slotSpanTime = null) {
       }
     }
 
-    // 4. Teacher initial: uppercase 2-4 letters
+    // 4. Teacher initial: uppercase 2-4 letters (excluding course codes, times, AM/PM, rooms)
     let teacher = "";
-    let remaining = trimmedChunk
-      .replace(codeMatch[0], "")
-      .replace(/\([^)]+\)/g, "")
-      .trim();
-    
-    // Check against known faculty initials first
-    const tokens = remaining.match(/\b[A-Z]{2,4}\b/g) || [];
+    let cleanForTeacher = trimmedChunk.replace(codeMatch[0], "");
+    if (timeMatch) {
+      cleanForTeacher = cleanForTeacher.replace(timeMatch[0], "");
+    }
+    // Remove all paren blocks
+    cleanForTeacher = cleanForTeacher.replace(/\([^)]*\)/g, " ").replace(/[()[\]]/g, " ").trim();
+
+    const tokens = cleanForTeacher.match(/\b[A-Za-z]{2,5}\b/g) || [];
     for (const tok of tokens) {
       const up = tok.toUpperCase();
-      if (!["AM", "PM", "LAB", "GED", "HUM", "ENG", "MAT", "PHY", "EEE", "ICE", "BBA"].includes(up)) {
+      if (!["AM", "PM", "LAB", "GED", "HUM", "ENG", "MAT", "PHY", "EEE", "ICE", "BBA", "TBA", "DAY", "TIME", "ROOM"].includes(up)) {
         teacher = up;
         break;
       }
     }
 
-    // Time determination:
-    // 1. If explicit custom time was written inside cell e.g. "(01:10PM - 03:10 PM)"
-    let finalTime = defaultTimeSlot;
-    const isLab = /lab/i.test(courseCode) || /\b(1144|1248|1348|2142|2144|2146|2242|2244|2248|2342|2344|2346|3142|3144|3146|3148|3242|3244|3246|3248|3342|4152|4156)\b/.test(courseCode);
+    // STRICT TIME PRIORITY:
+    // If custom time was written in the cell, it is 100% authoritative!
+    const isLab = /lab/i.test(courseCode) || /\b(1022|1144|1246|1248|1346|1348|2142|2144|2146|2242|2244|2248|2342|2344|2346|3142|3144|3146|3148|3242|3244|3246|3248|3342|4152|4156)\b/.test(courseCode);
+    let finalTime = normDefaultTime;
 
     if (customTime) {
-      if (isLab && slotSpanTime) {
-        finalTime = slotSpanTime; // e.g. 08:20 - 12:50
-      } else {
-        finalTime = customTime;
-      }
-    } else if (isLab && slotSpanTime) {
-      finalTime = slotSpanTime;
+      finalTime = customTime;
+    } else if (isLab && normSpanTime) {
+      finalTime = normSpanTime;
     } else {
-      finalTime = defaultTimeSlot;
+      finalTime = normDefaultTime;
     }
 
     results.push({
@@ -229,7 +276,7 @@ function parseRoutineData(csvText) {
     if (val) {
       timeSlots.push({
         colIndex: c,
-        name: val.replace(/\s*-\s*/, " - "),
+        name: standardizeClassTime(val),
         isPrayerBreak: /prayer/i.test(val)
       });
     }
@@ -290,7 +337,7 @@ function parseRoutineData(csvText) {
         if (nextIdx - sIdx >= 3) break;
       }
 
-      // If it spans multiple empty slots (like Lab 8:20 to 12:50)
+      // If it spans multiple empty slots (like Lab 08:20 AM to 12:50 PM)
       if (nextIdx > sIdx + 1) {
         const lastSlot = timeSlots[nextIdx - 1];
         const startStr = defaultTime.split("-")[0]?.trim();
@@ -317,5 +364,5 @@ function parseRoutineData(csvText) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { parseCSV, convertToCSVUrl, cleanTimeString, parseCellClasses, parseRoutineData };
+  module.exports = { parseCSV, convertToCSVUrl, standardizeClassTime, cleanTimeString, parseCellClasses, parseRoutineData };
 }

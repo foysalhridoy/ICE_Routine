@@ -50,7 +50,9 @@ const elements = {
 };
 
 /**
- * Real-time class status for today ("Running Class", "Next Up", "Upcoming", "Finished")
+ * Real-time class status for today:
+ * Strictly indicates currently active/running class only.
+ * No upcoming, next up, or completed badges to keep all timetable cells clean, fully visible, and normal.
  */
 function getClassTimeState(timeStr, dayName) {
   if (!timeStr) return null;
@@ -68,7 +70,6 @@ function getClassTimeState(timeStr, dayName) {
     const m = parseInt(match[2], 10);
     let period = (match[3] || "").toUpperCase();
 
-    // If period not explicitly stated, infer based on university daytime schedule
     if (!period) {
       if (h >= 1 && h <= 7) {
         period = "PM";
@@ -79,7 +80,6 @@ function getClassTimeState(timeStr, dayName) {
       }
     }
 
-    // Handle 12-hour clock
     if (period === "PM" && h < 12) h += 12;
     if (period === "AM" && h === 12) h = 0;
 
@@ -99,33 +99,11 @@ function getClassTimeState(timeStr, dayName) {
       state: 'now',
       badgeText: `Live Now`,
       remainingText: `${remaining}m left`,
-      badge: `<span class="live-class-badge badge-now"><span class="badge-beacon"><span class="beacon-wave"></span><span class="beacon-core"></span></span><span class="badge-label">LIVE NOW</span><span class="badge-divider"></span><span class="badge-detail">${remaining}m left</span></span>`
-    };
-  } else if (currentM < startM) {
-    const inMins = startM - currentM;
-    if (inMins <= 60) {
-      return {
-        state: 'upcoming',
-        badgeText: `Next Up`,
-        remainingText: `in ${inMins}m`,
-        badge: `<span class="live-class-badge badge-next"><span class="badge-indicator-amber"></span><svg class="badge-icon-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="badge-label">NEXT UP</span><span class="badge-divider"></span><span class="badge-detail">in ${inMins}m</span></span>`
-      };
-    } else {
-      return {
-        state: 'later',
-        badgeText: `Upcoming`,
-        remainingText: `in ${inMins}m`,
-        badge: `<span class="live-class-badge badge-later"><svg class="badge-icon-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="badge-label">UPCOMING</span><span class="badge-divider"></span><span class="badge-detail">in ${inMins}m</span></span>`
-      };
-    }
-  } else if (currentM >= endM) {
-    return {
-      state: 'done',
-      badgeText: `Completed`,
-      remainingText: ``,
-      badge: `<span class="live-class-badge badge-done"><svg class="badge-icon-svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span class="badge-label">COMPLETED</span></span>`
+      badge: `<span class="live-class-badge badge-now"><span class="badge-beacon"><span class="beacon-wave"></span><span class="beacon-core"></span></span><span class="badge-label">LIVE NOW</span></span>`
     };
   }
+
+  // All other times return null so cards/cells remain completely normal with no disappearing/fading
   return null;
 }
 
@@ -546,8 +524,8 @@ function updateLiveDateBadge() {
 /**
  * Open Faculty Modal
  */
-function openFacultyModal(initial) {
-  const fac = getFacultyInfo(initial);
+function openFacultyModal(initial, courseCode = "") {
+  const fac = getFacultyInfo(initial, courseCode);
   if (!fac) return;
 
   state.currentModalInitial = initial;
@@ -650,27 +628,6 @@ function renderBatchRoutine() {
   const totalCredits = courseList.reduce((sum, c) => sum + (c.credit || 0), 0);
   const search = (state.searchQuery || "").trim().toLowerCase();
 
-  // Course Details Section (Top of Image 1)
-  const courseDetailsHtml = `
-    <div class="course-details-wrapper">
-      <div class="course-details-heading">
-        <span>Course details:</span>
-        <span class="badge-pill" style="background: #e0f2fe; color: #0284c7;">
-          ${courseList.length} Courses &bull; ${totalCredits} Credit Hours
-        </span>
-      </div>
-      <ol class="course-details-ol">
-        ${courseList.map(c => `
-          <li>
-            <div class="course-detail-item">
-              <span class="course-title-text"><strong>${c.code}</strong> &ndash; ${c.title}</span>
-              <span class="course-credit-chip">${c.credit} Cr</span>
-            </div>
-          </li>
-        `).join("")}
-      </ol>
-    </div>
-  `;
 
   const currentDayName = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date());
   const isTodayOnly = state.dayFilter === "today";
@@ -787,18 +744,12 @@ function renderBatchRoutine() {
             </div>
             <div class="mobile-day-classes-list">
               ${classes.map(cls => {
-                const fac = getFacultyInfo(cls.teacher);
+                const fac = getFacultyInfo(cls.teacher, cls.courseCode);
                 const facName = fac ? fac.name : cls.teacher;
                 const course = getCourseInfo(cls.courseCode);
                 const timeStatus = getClassTimeState(cls.time, day);
                 const isRunning = timeStatus && timeStatus.state === 'now';
-                const isNext = timeStatus && timeStatus.state === 'upcoming';
-                const isFinished = timeStatus && timeStatus.state === 'done';
-
-                let cardStateClass = "";
-                if (isRunning) cardStateClass = "is-active-now";
-                else if (isNext) cardStateClass = "is-next-card";
-                else if (isFinished) cardStateClass = "is-finished-card";
+                let cardStateClass = isRunning ? "is-active-now" : "";
 
                 return `
                   <div class="mobile-class-card ${cardStateClass}">
@@ -824,7 +775,7 @@ function renderBatchRoutine() {
                         </svg>
                         <span>${cls.room}</span>
                       </div>
-                      <button class="teacher-interactive-pill" onclick="openFacultyModal('${cls.teacher}')" title="View ${facName}">
+                      <button class="teacher-interactive-pill" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="View ${facName}">
                         ${fac.photoUrl ? `<img src="${fac.photoUrl}" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;">` : ''}
                         <span>${cls.teacher}</span>
                       </button>
@@ -851,18 +802,13 @@ function renderBatchRoutine() {
 
       classes.forEach((cls, idx) => {
         alternateCounter++;
-        const fac = getFacultyInfo(cls.teacher);
+        const fac = getFacultyInfo(cls.teacher, cls.courseCode);
         const facName = fac ? fac.name : cls.teacher;
+        const course = getCourseInfo(cls.courseCode);
         const timeStatus = getClassTimeState(cls.time, day);
         let rowClass = (alternateCounter % 2 === 0) ? "row-fill-purple" : "row-fill-green";
-        if (isToday) {
-          if (timeStatus && timeStatus.state === 'now') {
-            rowClass = "row-running-class";
-          } else if (timeStatus && timeStatus.state === 'upcoming') {
-            rowClass += " row-next-class";
-          } else if (timeStatus && timeStatus.state === 'done') {
-            rowClass += " row-finished-class";
-          }
+        if (isToday && timeStatus && timeStatus.state === 'now') {
+          rowClass = "row-running-class";
         }
 
         tableRowsHtml += `
@@ -874,14 +820,17 @@ function renderBatchRoutine() {
                   ${isToday ? '<span class="today-tag-modern"><span class="today-spark-dot"></span><span>TODAY</span></span>' : ''}
                 </div>
               </td>` : ""}
-            <td class="course-cell-code"><strong>${cls.courseCode}</strong></td>
+            <td class="course-cell-code">
+              <div class="course-code-main"><strong>${cls.courseCode}</strong></div>
+              <div class="course-title-sub">${course.title || ""}</div>
+            </td>
             <td class="time-cell-text">
               <div>${cls.time}</div>
               ${timeStatus ? `<div style="margin-top: 0.3rem;">${timeStatus.badge}</div>` : ''}
             </td>
             <td class="room-cell-text">${cls.room}</td>
             <td>
-              <button class="teacher-interactive-pill" onclick="openFacultyModal('${cls.teacher}')" title="Click to view ${facName}">
+              <button class="teacher-interactive-pill" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="Click to view ${facName}">
                 ${fac.photoUrl ? `<img src="${fac.photoUrl}" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;">` : ''}
                 <span>${cls.teacher}</span>
               </button>
@@ -944,7 +893,6 @@ function renderBatchRoutine() {
       </div>
 
       ${viewToggleBarHtml}
-      ${courseDetailsHtml}
       ${scheduleBodyHtml}
 
       <div class="routine-footer-meta">
@@ -1166,7 +1114,10 @@ function renderTeacherView() {
         <td><strong>${c.day}</strong></td>
         <td>${c.time}</td>
         <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
-        <td class="course-cell-code"><strong>${c.courseCode}</strong></td>
+        <td class="course-cell-code">
+          <div class="course-code-main"><strong>${c.courseCode}</strong></div>
+          <div class="course-title-sub">${getCourseInfo(c.courseCode).title || ""}</div>
+        </td>
         <td class="room-cell-text">${c.room}</td>
       </tr>
     `).join("");
@@ -1286,9 +1237,12 @@ function renderRoomView() {
         <td><strong>${c.day}</strong></td>
         <td>${c.time}</td>
         <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
-        <td class="course-cell-code"><strong>${c.courseCode}</strong></td>
+        <td class="course-cell-code">
+          <div class="course-code-main"><strong>${c.courseCode}</strong></div>
+          <div class="course-title-sub">${getCourseInfo(c.courseCode).title || ""}</div>
+        </td>
         <td>
-          <button class="teacher-interactive-pill" onclick="openFacultyModal('${c.teacher}')">
+          <button class="teacher-interactive-pill" onclick="openFacultyModal('${c.teacher}', '${c.courseCode}')">
             ${c.teacher}
           </button>
         </td>
