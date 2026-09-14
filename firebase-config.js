@@ -135,7 +135,8 @@ class FirebaseSyncService {
         updatedAt: new Date().toISOString(),
         updatedBy: payload.updatedBy || "DIU Student/CR",
         totalClasses: payload.totalClasses || 0,
-        sourceType: payload.sourceType || "google_sheet"
+        sourceType: payload.sourceType || "google_sheet",
+        recentUpdates: payload.recentUpdates || []
       };
 
       await docRef.set(docData, { merge: true });

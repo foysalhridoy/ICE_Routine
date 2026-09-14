@@ -6,6 +6,7 @@
 // Application State
 const state = {
   routine: null,
+  routineUpdates: [],
   selectedBatch: "L1T1",
   activeView: "batch", // "batch" | "master" | "teacher" | "room"
   dayFilter: "all", // "all" | "today"
@@ -31,12 +32,12 @@ const elements = {
   viewTabs: document.querySelectorAll(".nav-tab-btn"),
   btnPrint: document.getElementById("btnPrint"),
   btnDownloadImage: document.getElementById("btnDownloadImage"),
+  btnDownloadRoutine: document.getElementById("btnDownloadRoutine"),
+  downloadDropdownWrapper: document.getElementById("downloadDropdownWrapper"),
   btnCopyText: document.getElementById("btnCopyText"),
-  btnCalendar: document.getElementById("btnCalendar"),
   searchInput: document.getElementById("searchInput"),
   searchClearBtn: document.getElementById("searchClearBtn"),
   headerCloudBadge: document.getElementById("headerCloudBadge"),
-  btnScrollTop: document.getElementById("btnScrollTop"),
   facultyModalOverlay: document.getElementById("facultyModalOverlay"),
   modalCloseBtn: document.getElementById("modalCloseBtn"),
   facultyModalPhoto: document.getElementById("facultyModalPhoto"),
@@ -46,7 +47,13 @@ const elements = {
   facultyModalInitial: document.getElementById("facultyModalInitial"),
   facultyModalLink: document.getElementById("facultyModalLink"),
   facultyModalClassesCount: document.getElementById("facultyModalClassesCount"),
-  btnFacultyViewAllClasses: document.getElementById("btnFacultyViewAllClasses")
+  btnFacultyViewAllClasses: document.getElementById("btnFacultyViewAllClasses"),
+  routineNewsTicker: document.getElementById("routineNewsTicker"),
+  tickerBadge: document.getElementById("tickerBadge"),
+  tickerBadgeTitle: document.getElementById("tickerBadgeTitle"),
+  tickerTrack: document.getElementById("tickerTrack"),
+  tickerStatusTag: document.getElementById("tickerStatusTag"),
+  tickerLiveDot: document.getElementById("tickerLiveDot")
 };
 
 /**
@@ -199,6 +206,253 @@ function updateCloudSyncUI() {
   }
 }
 
+/* ==========================================================================
+   ROUTINE NEWS TICKER & EXCEL CHANGE DETECTION ENGINE
+   ========================================================================== */
+
+/**
+ * Detect schedule differences between two routine datasets.
+ * Compares batch-by-batch and day-by-day.
+ * Generates exact notifications like:
+ * "L1T1 updated on Saturday schedule"
+ */
+function detectRoutineChanges(oldBatches, newBatches) {
+  if (!oldBatches || typeof oldBatches !== "object") return [];
+  if (!newBatches || typeof newBatches !== "object") return [];
+
+  const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+  const changes = [];
+
+  const allBatches = Array.from(new Set([
+    ...Object.keys(oldBatches),
+    ...Object.keys(newBatches)
+  ])).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+
+  for (const batch of allBatches) {
+    const oldSched = oldBatches[batch] || {};
+    const newSched = newBatches[batch] || {};
+
+    for (const day of days) {
+      const oldClasses = Array.isArray(oldSched[day]) ? oldSched[day] : [];
+      const newClasses = Array.isArray(newSched[day]) ? newSched[day] : [];
+
+      const serializeClasses = (list) => {
+        return list
+          .map(c => `${c.courseCode || ""}|${c.room || ""}|${c.teacher || ""}|${c.time || ""}`)
+          .sort()
+          .join(";;");
+      };
+
+      const oldSig = serializeClasses(oldClasses);
+      const newSig = serializeClasses(newClasses);
+
+      if (oldSig !== newSig) {
+        changes.push({
+          batch: batch,
+          day: day,
+          message: `${batch} updated on ${day} schedule`,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  }
+
+  return changes;
+}
+
+/**
+ * Process routine update against saved baseline snapshot
+ */
+function processRoutineDataUpdate(newRoutine, isInitial = false, cloudUpdates = null) {
+  if (!newRoutine || !newRoutine.batches) return;
+
+  // If cloud delivered explicit updates
+  if (Array.isArray(cloudUpdates) && cloudUpdates.length > 0) {
+    state.routineUpdates = cloudUpdates;
+    try {
+      localStorage.setItem("diu_ice_routine_updates", JSON.stringify(cloudUpdates));
+      localStorage.setItem("diu_ice_routine_snapshot", JSON.stringify(newRoutine.batches));
+    } catch (e) {}
+    renderNewsTicker(cloudUpdates);
+    return;
+  }
+
+  const cachedSnapshotStr = localStorage.getItem("diu_ice_routine_snapshot");
+
+  if (!cachedSnapshotStr) {
+    // First time baseline initialization
+    try {
+      localStorage.setItem("diu_ice_routine_snapshot", JSON.stringify(newRoutine.batches));
+    } catch (e) {}
+
+    let storedUpdates = [];
+    try {
+      const raw = localStorage.getItem("diu_ice_routine_updates");
+      if (raw) storedUpdates = JSON.parse(raw);
+    } catch (e) {}
+
+    if (Array.isArray(storedUpdates) && storedUpdates.length > 0) {
+      state.routineUpdates = storedUpdates;
+      renderNewsTicker(storedUpdates);
+    } else {
+      state.routineUpdates = [];
+      renderNewsTicker([]);
+    }
+    return;
+  }
+
+  try {
+    const oldBatches = JSON.parse(cachedSnapshotStr);
+    const changes = detectRoutineChanges(oldBatches, newRoutine.batches);
+
+    if (changes.length > 0) {
+      state.routineUpdates = changes;
+      localStorage.setItem("diu_ice_routine_updates", JSON.stringify(changes));
+      localStorage.setItem("diu_ice_routine_snapshot", JSON.stringify(newRoutine.batches));
+      renderNewsTicker(changes);
+
+      if (!isInitial) {
+        showToast(`⚡ ${changes.length} routine update${changes.length > 1 ? "s" : ""} detected in Excel!`, "success");
+      }
+    } else {
+      // No changes detected in this load/upload
+      if (!isInitial) {
+        state.routineUpdates = [];
+        localStorage.removeItem("diu_ice_routine_updates");
+        renderNewsTicker([]);
+        showToast("Excel verified: Routine is unchanged and fully up to date.", "info");
+      } else {
+        let storedUpdates = [];
+        try {
+          const raw = localStorage.getItem("diu_ice_routine_updates");
+          if (raw) storedUpdates = JSON.parse(raw);
+        } catch (e) {}
+
+        if (Array.isArray(storedUpdates) && storedUpdates.length > 0) {
+          state.routineUpdates = storedUpdates;
+          renderNewsTicker(storedUpdates);
+        } else {
+          state.routineUpdates = [];
+          renderNewsTicker([]);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Routine update processing error:", err);
+    try {
+      localStorage.setItem("diu_ice_routine_snapshot", JSON.stringify(newRoutine.batches));
+    } catch (e) {}
+    renderNewsTicker([]);
+  }
+}
+
+/**
+ * Render news ticker or the requested fallback message if no updates exist.
+ */
+function renderNewsTicker(updates = []) {
+  if (!elements.routineNewsTicker || !elements.tickerTrack) return;
+
+  const ticker = elements.routineNewsTicker;
+  const track = elements.tickerTrack;
+  const badgeTitle = elements.tickerBadgeTitle;
+  const statusTag = elements.tickerStatusTag;
+
+  track.innerHTML = "";
+
+  if (Array.isArray(updates) && updates.length > 0) {
+    ticker.classList.add("has-updates");
+    if (badgeTitle) badgeTitle.textContent = "UPDATES";
+    if (statusTag) {
+      statusTag.innerHTML = `<span class="ticker-status-dot"></span><span>${updates.length} New Update${updates.length > 1 ? "s" : ""}</span>`;
+    }
+
+    const buildItemsHtml = () => {
+      return updates.map((item) => `
+        <div class="ticker-item" data-batch="${item.batch}" data-day="${item.day}" role="button" tabindex="0" title="Click to view ${item.batch} ${item.day} schedule">
+          <span class="ticker-bolt-icon" aria-hidden="true">⚡</span>
+          <span class="ticker-batch-tag">${item.batch}</span>
+          <span class="ticker-item-text"><strong>${item.batch}</strong> updated on <strong>${item.day}</strong> schedule</span>
+          <span class="ticker-item-arrow" aria-hidden="true">→</span>
+        </div>
+      `).join("");
+    };
+
+    let html = buildItemsHtml();
+    // Seamless marquee looping: repeat items for non-choppy infinite loop
+    if (updates.length < 4) {
+      html += buildItemsHtml() + buildItemsHtml() + buildItemsHtml();
+    } else {
+      html += buildItemsHtml() + buildItemsHtml();
+    }
+    track.innerHTML = html;
+
+    const speedSeconds = Math.max(18, updates.length * 6);
+    track.style.animationDuration = `${speedSeconds}s`;
+    track.classList.add("is-animated");
+
+    // Click to navigate to updated batch & day
+    track.querySelectorAll(".ticker-item").forEach(itemEl => {
+      const clickHandler = () => {
+        const targetBatch = itemEl.getAttribute("data-batch");
+        const targetDay = itemEl.getAttribute("data-day");
+        handleTickerItemClick(targetBatch, targetDay);
+      };
+      itemEl.addEventListener("click", clickHandler);
+      itemEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          clickHandler();
+        }
+      });
+    });
+  } else {
+    // Exact fallback required by user:
+    // "ar jodi excel update na hoy tahole bolba j kono update ashe nai routine e ashle janay deya hobe"
+    ticker.classList.remove("has-updates");
+
+    if (badgeTitle) badgeTitle.textContent = "NOTICE";
+    if (statusTag) {
+      statusTag.innerHTML = `<span class="ticker-status-dot"></span><span>Live Feed</span>`;
+    }
+
+    const singleNotice = `
+      <div class="ticker-empty-item">
+        <span class="ticker-broadcast-pill">NOTICE</span>
+        <span class="ticker-empty-text">রুটিনে কোনো নতুন আপডেট আসেনি, নতুন আপডেট আসলে জানিয়ে দেওয়া হবে</span>
+        <span class="ticker-diamond-sep" aria-hidden="true">✦</span>
+      </div>
+    `;
+
+    // Seamless right-to-left continuous marquee
+    track.innerHTML = singleNotice + singleNotice + singleNotice + singleNotice;
+    track.style.animationDuration = "28s";
+    track.classList.add("is-animated");
+  }
+}
+
+/**
+ * Handle clicking on a ticker update item
+ */
+function handleTickerItemClick(batch, day) {
+  if (!batch || !state.routine || !state.routine.batches[batch]) return;
+
+  state.selectedBatch = batch;
+  state.activeView = "batch";
+  updateViewTabs();
+  renderBatchChips();
+  renderStats();
+  renderCurrentView();
+
+  setTimeout(() => {
+    const routineArea = document.getElementById("routineDisplayArea");
+    if (routineArea) {
+      routineArea.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, 100);
+
+  showToast(`📌 Showing ${batch} (${day} schedule updated)`, "info");
+}
+
 function subscribeToCloudUpdates() {
   if (!window.firebaseSync || !window.firebaseSync.isConfigured()) return;
 
@@ -217,6 +471,7 @@ function subscribeToCloudUpdates() {
       elements.sheetUrlInput.value = cloudData.sheetUrl;
     }
 
+    processRoutineDataUpdate(state.routine, false, cloudData.recentUpdates);
     onDataLoaded("Live Synced from Cloud");
     showToast("🔥 Routine updated globally from Cloud!", "success");
   });
@@ -233,7 +488,8 @@ async function publishCurrentRoutineToCloud(sourceUrl, sourceType = "google_shee
       batches: state.routine.allBatchesList || Object.keys(state.routine.batches),
       rawSchedule: state.routine.batches,
       updatedBy: "DIU Student/CR",
-      sourceType: sourceType
+      sourceType: sourceType,
+      recentUpdates: state.routineUpdates || []
     });
     showToast("🚀 Published Globally! All students will now see this routine.", "success");
   } catch (err) {
@@ -265,6 +521,7 @@ async function loadInitialData() {
         if (cloudData.sheetUrl && elements.sheetUrlInput && cloudData.sourceType !== "file_upload") {
           elements.sheetUrlInput.value = cloudData.sheetUrl;
         }
+        processRoutineDataUpdate(state.routine, true, cloudData.recentUpdates);
         onDataLoaded("Cloud Synced");
         subscribeToCloudUpdates();
         return;
@@ -280,6 +537,7 @@ async function loadInitialData() {
     if (resp.ok) {
       const csvText = await resp.text();
       state.routine = parseRoutineData(csvText);
+      processRoutineDataUpdate(state.routine, true);
       onDataLoaded("Ready");
       subscribeToCloudUpdates();
       return;
@@ -324,6 +582,7 @@ async function fetchSheetData(url) {
     }
 
     state.routine = parseRoutineData(csvText);
+    processRoutineDataUpdate(state.routine, false);
     onDataLoaded("Synced with Google Sheet");
 
     if (window.firebaseSync && window.firebaseSync.isConfigured()) {
@@ -338,6 +597,7 @@ async function fetchSheetData(url) {
       if (localRes.ok) {
         const text = await localRes.text();
         state.routine = parseRoutineData(text);
+        processRoutineDataUpdate(state.routine, true);
         onDataLoaded("Ready");
         return;
       }
@@ -375,6 +635,7 @@ function handleFileUpload(file) {
       }
 
       state.routine = parseRoutineData(csvContent);
+      processRoutineDataUpdate(state.routine, false);
       onDataLoaded("Loaded from " + file.name);
 
       if (window.firebaseSync && window.firebaseSync.isConfigured()) {
@@ -416,7 +677,7 @@ function setLoading(isLoading, text) {
     elements.btnFetchSheet.disabled = isLoading;
     elements.btnFetchSheet.innerHTML = isLoading 
       ? `<span class="spinner"></span> Syncing...`
-      : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Fetch & Sync`;
+      : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.36L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.36L3 16M3 21v-5h5"/></svg> Fetch & Sync`;
   }
 }
 
@@ -518,6 +779,27 @@ function updateLiveDateBadge() {
     el.textContent = formatted;
   } catch (e) {
     el.textContent = "Today's Routine";
+  }
+}
+
+/**
+ * Real-time Digital Clock for Navbar
+ */
+function updateDigitalClock() {
+  const timeEl = document.getElementById("digitalClockTime");
+  if (!timeEl) return;
+  try {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, '0');
+    timeEl.innerHTML = `${formattedHours}:${minutes}:${seconds} <span class="clock-ampm">${ampm}</span>`;
+  } catch (e) {
+    timeEl.textContent = new Date().toLocaleTimeString();
   }
 }
 
@@ -656,25 +938,24 @@ function renderBatchRoutine() {
     }
   });
 
-  // Toggle Bar (Table View vs Mobile Cards View + All Days vs Today Only)
+  // Toggle Bar (Table vs Cards + All Days vs Today)
   const isCardsMode = state.displayMode === "cards";
   const viewToggleBarHtml = `
     <div class="routine-view-toggle-bar no-print">
       <div class="view-toggle-pill-group">
-        <button class="view-toggle-btn ${!isCardsMode ? 'active' : ''}" onclick="toggleDisplayMode('table')" title="View exact Image 1 timetable">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="3" y1="9" x2="21" y2="9" />
-            <line x1="9" y1="21" x2="9" y2="9" />
+        <button class="view-toggle-btn ${!isCardsMode ? 'active' : ''}" onclick="toggleDisplayMode('table')" title="Table View">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2.5"/>
+            <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
           </svg>
-          <span>Table View</span>
+          <span>Table</span>
         </button>
-        <button class="view-toggle-btn ${isCardsMode ? 'active' : ''}" onclick="toggleDisplayMode('cards')" title="Mobile-friendly vertical cards">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="5" y="2" width="14" height="20" rx="2" />
-            <line x1="12" y1="18" x2="12.01" y2="18" />
+        <button class="view-toggle-btn ${isCardsMode ? 'active' : ''}" onclick="toggleDisplayMode('cards')" title="Cards View">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="14" height="20" x="5" y="2" rx="3"/>
+            <path d="M12 18h.01"/>
           </svg>
-          <span>Mobile Cards</span>
+          <span>Cards</span>
         </button>
       </div>
 
@@ -683,7 +964,7 @@ function renderBatchRoutine() {
           <span>📅 All Days</span>
         </button>
         <button class="view-toggle-btn ${isTodayOnly ? 'active' : ''}" onclick="setDayFilter('today')" title="Show only today's classes">
-          <span>⚡ Today (${currentDayName.slice(0, 3)})</span>
+          <span>⚡ Today</span>
         </button>
       </div>
     </div>
@@ -759,7 +1040,7 @@ function renderBatchRoutine() {
                         ${timeStatus ? timeStatus.badge : ''}
                       </div>
                       <div class="class-card-time">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <circle cx="12" cy="12" r="10"/>
                           <polyline points="12 6 12 12 16 14"/>
                         </svg>
@@ -768,9 +1049,9 @@ function renderBatchRoutine() {
                     </div>
                     <div class="class-card-bottom">
                       <div class="class-card-room">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                          <polyline points="9 22 9 12 15 12 15 22"/>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                          <circle cx="12" cy="10" r="3"/>
                         </svg>
                         <span>${cls.room}</span>
                       </div>
@@ -1604,7 +1885,30 @@ function setupEventListeners() {
   elements.btnPrint?.addEventListener("click", () => window.print());
   elements.btnDownloadImage?.addEventListener("click", downloadAsImage);
   elements.btnCopyText?.addEventListener("click", copyRoutineAsText);
-  elements.btnCalendar?.addEventListener("click", exportToCalendar);
+
+  // Glowing Download Routine Dropdown Controller
+  const downloadWrapper = elements.downloadDropdownWrapper;
+  const downloadBtn = elements.btnDownloadRoutine;
+
+  downloadBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = downloadWrapper?.classList.toggle("is-open");
+    downloadBtn.setAttribute("aria-expanded", String(Boolean(isOpen)));
+  });
+
+  document.addEventListener("click", (e) => {
+    if (downloadWrapper && !downloadWrapper.contains(e.target)) {
+      downloadWrapper.classList.remove("is-open");
+      downloadBtn?.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  document.querySelectorAll(".download-menu-item").forEach(item => {
+    item.addEventListener("click", () => {
+      downloadWrapper?.classList.remove("is-open");
+      downloadBtn?.setAttribute("aria-expanded", "false");
+    });
+  });
 
   elements.searchInput?.addEventListener("input", (e) => {
     state.searchQuery = e.target.value;
@@ -1615,7 +1919,6 @@ function setupEventListeners() {
   });
 
   elements.searchClearBtn?.addEventListener("click", clearSearchFilter);
-
 
   // Batch chips horizontal scroll wheel
   elements.batchChipsContainer?.addEventListener("wheel", (e) => {
