@@ -9,7 +9,7 @@
 ██║  ██║██║██║   ██║    ██║██║     ██╔══╝  
 ██████╔╝██║╚██████╔╝    ██║╚██████╗███████╗
 ╚═════╝ ╚═╝ ╚═════╝     ╚═╝ ╚═════╝╚══════╝
-        ROUTINE GENERATOR — FALL 2026
+           ROUTINE GENERATOR
 ```
 
 # 🎓 DIU ICE Class Routine Generator
