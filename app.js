@@ -49,11 +49,7 @@ const elements = {
   facultyModalClassesCount: document.getElementById("facultyModalClassesCount"),
   btnFacultyViewAllClasses: document.getElementById("btnFacultyViewAllClasses"),
   routineNewsTicker: document.getElementById("routineNewsTicker"),
-  tickerBadge: document.getElementById("tickerBadge"),
-  tickerBadgeTitle: document.getElementById("tickerBadgeTitle"),
-  tickerTrack: document.getElementById("tickerTrack"),
-  tickerStatusTag: document.getElementById("tickerStatusTag"),
-  tickerLiveDot: document.getElementById("tickerLiveDot")
+  tickerTrack: document.getElementById("tickerTrack")
 };
 
 /**
@@ -142,13 +138,14 @@ function showToast(message, type = "success") {
   if (!container) return;
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span>${type === 'success' ? '✓' : 'ℹ'}</span> <span>${message}</span>`;
+  const icon = type === 'success' ? '⚡' : type === 'error' ? '⚠' : 'ℹ';
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-msg">${message}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateY(12px)';
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
+    toast.style.transform = 'translateY(6px)';
+    setTimeout(() => toast.remove(), 250);
+  }, 3200);
 }
 
 /**
@@ -207,8 +204,72 @@ function updateCloudSyncUI() {
 }
 
 /* ==========================================================================
-   ROUTINE NEWS TICKER & EXCEL CHANGE DETECTION ENGINE
+   ROUTINE NEWS TICKER & EXCEL CHANGE DETECTION ENGINE (3-DAY PERSISTENCE)
    ========================================================================== */
+
+const ROUTINE_UPDATE_RETENTION_MS = 3 * 24 * 60 * 60 * 1000; // 3 Consecutive Days (72 Hours)
+
+/**
+ * Format timestamp into human-readable relative time (e.g. "Just now", "25m ago", "2h ago", "Yesterday", "2d ago")
+ */
+function formatTimeAgo(isoString) {
+  if (!isoString) return "";
+  try {
+    const time = new Date(isoString).getTime();
+    if (!time || isNaN(time)) return "";
+    const diffMs = Date.now() - time;
+    if (diffMs < 0 || isNaN(diffMs)) return "Just now";
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return "Just now";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHrs = Math.floor(diffMin / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    if (diffDays === 1) return "Yesterday";
+    return `${diffDays}d ago`;
+  } catch (e) {
+    return "";
+  }
+}
+
+/**
+ * Filter updates list to only keep items recorded within the last 3 days.
+ * If 3 consecutive days pass without any update, returns empty array.
+ */
+function getActiveRoutineUpdates(updatesList) {
+  if (!Array.isArray(updatesList)) return [];
+  const now = Date.now();
+
+  return updatesList.filter(item => {
+    if (!item || !item.batch || !item.day) return false;
+    const itemTimestamp = item.timestamp ? new Date(item.timestamp).getTime() : 0;
+    if (!itemTimestamp || isNaN(itemTimestamp)) return true;
+    return (now - itemTimestamp) <= ROUTINE_UPDATE_RETENTION_MS;
+  });
+}
+
+/**
+ * Merge existing active updates with new incoming changes, avoiding duplicates
+ * for the same batch & day while giving priority to the newest timestamp.
+ */
+function mergeRoutineUpdates(existingUpdates, newChanges) {
+  const list = Array.isArray(newChanges) ? [...newChanges] : [];
+  const handledKeys = new Set(list.map(c => `${c.batch}_${c.day}`));
+
+  if (Array.isArray(existingUpdates)) {
+    for (const oldItem of existingUpdates) {
+      if (!oldItem || !oldItem.batch || !oldItem.day) continue;
+      const key = `${oldItem.batch}_${oldItem.day}`;
+      if (!handledKeys.has(key)) {
+        list.push(oldItem);
+        handledKeys.add(key);
+      }
+    }
+  }
+
+  return getActiveRoutineUpdates(list);
+}
 
 /**
  * Detect schedule differences between two routine datasets.
@@ -261,19 +322,41 @@ function detectRoutineChanges(oldBatches, newBatches) {
 }
 
 /**
- * Process routine update against saved baseline snapshot
+ * Process routine update against saved baseline snapshot.
+ * Persists updates for 3 full days. Only shows "No updates" fallback
+ * if no update has arrived in 3 consecutive days.
  */
 function processRoutineDataUpdate(newRoutine, isInitial = false, cloudUpdates = null) {
   if (!newRoutine || !newRoutine.batches) return;
 
-  // If cloud delivered explicit updates
-  if (Array.isArray(cloudUpdates) && cloudUpdates.length > 0) {
-    state.routineUpdates = cloudUpdates;
+  // 1. If cloud delivered explicit updates
+  if (Array.isArray(cloudUpdates)) {
+    const activeCloud = getActiveRoutineUpdates(cloudUpdates);
+
+    let storedUpdates = [];
     try {
-      localStorage.setItem("diu_ice_routine_updates", JSON.stringify(cloudUpdates));
-      localStorage.setItem("diu_ice_routine_snapshot", JSON.stringify(newRoutine.batches));
+      const raw = localStorage.getItem("diu_ice_routine_updates");
+      if (raw) storedUpdates = JSON.parse(raw);
     } catch (e) {}
-    renderNewsTicker(cloudUpdates);
+    const activeStored = getActiveRoutineUpdates(storedUpdates);
+
+    const merged = mergeRoutineUpdates(activeStored, activeCloud);
+
+    if (merged.length > 0) {
+      state.routineUpdates = merged;
+      try {
+        localStorage.setItem("diu_ice_routine_updates", JSON.stringify(merged));
+        localStorage.setItem("diu_ice_routine_snapshot", JSON.stringify(newRoutine.batches));
+      } catch (e) {}
+      renderNewsTicker(merged);
+    } else {
+      state.routineUpdates = [];
+      try {
+        localStorage.removeItem("diu_ice_routine_updates");
+        localStorage.setItem("diu_ice_routine_snapshot", JSON.stringify(newRoutine.batches));
+      } catch (e) {}
+      renderNewsTicker([]);
+    }
     return;
   }
 
@@ -291,9 +374,10 @@ function processRoutineDataUpdate(newRoutine, isInitial = false, cloudUpdates = 
       if (raw) storedUpdates = JSON.parse(raw);
     } catch (e) {}
 
-    if (Array.isArray(storedUpdates) && storedUpdates.length > 0) {
-      state.routineUpdates = storedUpdates;
-      renderNewsTicker(storedUpdates);
+    const active = getActiveRoutineUpdates(storedUpdates);
+    if (active.length > 0) {
+      state.routineUpdates = active;
+      renderNewsTicker(active);
     } else {
       state.routineUpdates = [];
       renderNewsTicker([]);
@@ -303,38 +387,53 @@ function processRoutineDataUpdate(newRoutine, isInitial = false, cloudUpdates = 
 
   try {
     const oldBatches = JSON.parse(cachedSnapshotStr);
-    const changes = detectRoutineChanges(oldBatches, newRoutine.batches);
+    const newChanges = detectRoutineChanges(oldBatches, newRoutine.batches);
 
-    if (changes.length > 0) {
-      state.routineUpdates = changes;
-      localStorage.setItem("diu_ice_routine_updates", JSON.stringify(changes));
+    if (newChanges.length > 0) {
+      // New routine differences detected!
+      let storedUpdates = [];
+      try {
+        const raw = localStorage.getItem("diu_ice_routine_updates");
+        if (raw) storedUpdates = JSON.parse(raw);
+      } catch (e) {}
+      const activeStored = getActiveRoutineUpdates(storedUpdates);
+
+      const merged = mergeRoutineUpdates(activeStored, newChanges);
+      state.routineUpdates = merged;
+
+      localStorage.setItem("diu_ice_routine_updates", JSON.stringify(merged));
       localStorage.setItem("diu_ice_routine_snapshot", JSON.stringify(newRoutine.batches));
-      renderNewsTicker(changes);
+      localStorage.setItem("diu_ice_routine_last_update_time", new Date().toISOString());
+
+      renderNewsTicker(merged);
 
       if (!isInitial) {
-        showToast(`⚡ ${changes.length} routine update${changes.length > 1 ? "s" : ""} detected in Excel!`, "success");
+        showToast(`⚡ ${newChanges.length} routine update${newChanges.length > 1 ? "s" : ""} detected in Excel!`, "success");
       }
     } else {
-      // No changes detected in this load/upload
-      if (!isInitial) {
+      // No changes detected in this load/sync against the baseline snapshot.
+      // Retain active updates for 3 full days! DO NOT CLEAR THEM!
+      let storedUpdates = [];
+      try {
+        const raw = localStorage.getItem("diu_ice_routine_updates");
+        if (raw) storedUpdates = JSON.parse(raw);
+      } catch (e) {}
+      if (!storedUpdates.length && Array.isArray(state.routineUpdates)) {
+        storedUpdates = state.routineUpdates;
+      }
+
+      const active = getActiveRoutineUpdates(storedUpdates);
+
+      if (active.length > 0) {
+        // Still within 3-day active window
+        state.routineUpdates = active;
+        localStorage.setItem("diu_ice_routine_updates", JSON.stringify(active));
+        renderNewsTicker(active);
+      } else {
+        // 3 consecutive days have passed with no updates!
         state.routineUpdates = [];
         localStorage.removeItem("diu_ice_routine_updates");
         renderNewsTicker([]);
-        showToast("Excel verified: Routine is unchanged and fully up to date.", "info");
-      } else {
-        let storedUpdates = [];
-        try {
-          const raw = localStorage.getItem("diu_ice_routine_updates");
-          if (raw) storedUpdates = JSON.parse(raw);
-        } catch (e) {}
-
-        if (Array.isArray(storedUpdates) && storedUpdates.length > 0) {
-          state.routineUpdates = storedUpdates;
-          renderNewsTicker(storedUpdates);
-        } else {
-          state.routineUpdates = [];
-          renderNewsTicker([]);
-        }
       }
     }
   } catch (err) {
@@ -342,51 +441,86 @@ function processRoutineDataUpdate(newRoutine, isInitial = false, cloudUpdates = 
     try {
       localStorage.setItem("diu_ice_routine_snapshot", JSON.stringify(newRoutine.batches));
     } catch (e) {}
-    renderNewsTicker([]);
+    let storedUpdates = [];
+    try {
+      const raw = localStorage.getItem("diu_ice_routine_updates");
+      if (raw) storedUpdates = JSON.parse(raw);
+    } catch (e) {}
+    const active = getActiveRoutineUpdates(storedUpdates);
+    state.routineUpdates = active;
+    renderNewsTicker(active);
   }
 }
 
 /**
- * Render news ticker or the requested fallback message if no updates exist.
+ * Periodically prune routine updates older than 3 days and refresh ticker
+ */
+function checkAndPruneRoutineUpdates() {
+  if (!state.routineUpdates || state.routineUpdates.length === 0) return;
+  const active = getActiveRoutineUpdates(state.routineUpdates);
+  if (active.length !== state.routineUpdates.length) {
+    state.routineUpdates = active;
+    if (active.length > 0) {
+      try {
+        localStorage.setItem("diu_ice_routine_updates", JSON.stringify(active));
+      } catch (e) {}
+    } else {
+      try {
+        localStorage.removeItem("diu_ice_routine_updates");
+      } catch (e) {}
+    }
+    renderNewsTicker(active);
+  }
+}
+
+/**
+ * Render news ticker with ultra-stylish visuals.
+ * No tick sign (✓) is used anywhere.
+ * If updates exist within 3 days: shows lively scrolling micro-cards with batch, day, and time ago.
+ * If 3 consecutive days pass without updates: shows the requested fallback notice.
  */
 function renderNewsTicker(updates = []) {
   if (!elements.routineNewsTicker || !elements.tickerTrack) return;
 
   const ticker = elements.routineNewsTicker;
   const track = elements.tickerTrack;
-  const badgeTitle = elements.tickerBadgeTitle;
-  const statusTag = elements.tickerStatusTag;
 
   track.innerHTML = "";
 
-  if (Array.isArray(updates) && updates.length > 0) {
+  const activeUpdates = getActiveRoutineUpdates(updates);
+
+  if (activeUpdates.length > 0) {
     ticker.classList.add("has-updates");
-    if (badgeTitle) badgeTitle.textContent = "UPDATES";
-    if (statusTag) {
-      statusTag.innerHTML = `<span class="ticker-status-dot"></span><span>${updates.length} New Update${updates.length > 1 ? "s" : ""}</span>`;
-    }
 
     const buildItemsHtml = () => {
-      return updates.map((item) => `
-        <div class="ticker-item" data-batch="${item.batch}" data-day="${item.day}" role="button" tabindex="0" title="Click to view ${item.batch} ${item.day} schedule">
-          <span class="ticker-bolt-icon" aria-hidden="true">⚡</span>
-          <span class="ticker-batch-tag">${item.batch}</span>
-          <span class="ticker-item-text"><strong>${item.batch}</strong> updated on <strong>${item.day}</strong> schedule</span>
-          <span class="ticker-item-arrow" aria-hidden="true">→</span>
-        </div>
-      `).join("");
+      return activeUpdates.map((item) => {
+        const timeAgo = formatTimeAgo(item.timestamp);
+        const timePill = timeAgo ? `<span class="ticker-time-pill">${timeAgo}</span>` : "";
+        return `
+          <div class="ticker-item" data-batch="${item.batch}" data-day="${item.day}" role="button" tabindex="0" title="Click to view ${item.batch} ${item.day} schedule">
+            <span class="ticker-bolt-icon" aria-hidden="true">⚡</span>
+            <span class="ticker-batch-tag">${item.batch}</span>
+            <span class="ticker-day-tag">${item.day}</span>
+            <span class="ticker-item-text"><strong>${item.batch}</strong> schedule updated on <strong>${item.day}</strong></span>
+            ${timePill}
+            <span class="ticker-item-arrow" aria-hidden="true">→</span>
+          </div>
+        `;
+      }).join("");
     };
 
     let html = buildItemsHtml();
-    // Seamless marquee looping: repeat items for non-choppy infinite loop
-    if (updates.length < 4) {
+    // Seamless marquee looping: repeat items for continuous non-choppy loop
+    if (activeUpdates.length < 3) {
       html += buildItemsHtml() + buildItemsHtml() + buildItemsHtml();
-    } else {
+    } else if (activeUpdates.length < 6) {
       html += buildItemsHtml() + buildItemsHtml();
+    } else {
+      html += buildItemsHtml();
     }
     track.innerHTML = html;
 
-    const speedSeconds = Math.max(18, updates.length * 6);
+    const speedSeconds = Math.max(20, activeUpdates.length * 7);
     track.style.animationDuration = `${speedSeconds}s`;
     track.classList.add("is-animated");
 
@@ -406,18 +540,11 @@ function renderNewsTicker(updates = []) {
       });
     });
   } else {
-    // Exact fallback required by user:
-    // "ar jodi excel update na hoy tahole bolba j kono update ashe nai routine e ashle janay deya hobe"
+    // 3 consecutive days passed without any update: show notice
     ticker.classList.remove("has-updates");
-
-    if (badgeTitle) badgeTitle.textContent = "NOTICE";
-    if (statusTag) {
-      statusTag.innerHTML = `<span class="ticker-status-dot"></span><span>Live Feed</span>`;
-    }
 
     const singleNotice = `
       <div class="ticker-empty-item">
-        <span class="ticker-broadcast-pill">NOTICE</span>
         <span class="ticker-empty-text">রুটিনে কোনো নতুন আপডেট আসেনি, নতুন আপডেট আসলে জানিয়ে দেওয়া হবে</span>
         <span class="ticker-diamond-sep" aria-hidden="true">✦</span>
       </div>
@@ -482,6 +609,7 @@ async function publishCurrentRoutineToCloud(sourceUrl, sourceType = "google_shee
   if (!state.routine || !state.routine.batches) return;
 
   try {
+    const activeUpdates = getActiveRoutineUpdates(state.routineUpdates || []);
     await window.firebaseSync.publishGlobalRoutine({
       sheetUrl: sourceUrl || "",
       semester: state.routine.semester || "Fall-2026",
@@ -489,7 +617,7 @@ async function publishCurrentRoutineToCloud(sourceUrl, sourceType = "google_shee
       rawSchedule: state.routine.batches,
       updatedBy: "DIU Student/CR",
       sourceType: sourceType,
-      recentUpdates: state.routineUpdates || []
+      recentUpdates: activeUpdates
     });
     showToast("🚀 Published Globally! All students will now see this routine.", "success");
   } catch (err) {
@@ -1747,7 +1875,7 @@ async function downloadAsImage() {
     link.download = `DIU_ICE_${batch}_Routine.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
-    showToast("✅ Routine image downloaded!", "success");
+    showToast("📸 Routine image downloaded!", "success");
   } catch (err) {
     console.error(err);
     showToast("Failed to generate image: " + err.message, "error");
@@ -1948,15 +2076,16 @@ function setupEventListeners() {
     if (e.key === "Escape") {
       closeFacultyModal();
       if (state.searchQuery) clearSearchFilter();
-    } else if (e.key === "/" && document.activeElement !== elements.searchInput && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+    } else if (e.key === "/" && elements.searchInput && document.activeElement !== elements.searchInput && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
       e.preventDefault();
-      elements.searchInput?.focus();
+      elements.searchInput.focus();
     }
   });
 
-  // Periodically refresh live date and class status
+  // Periodically refresh live date, routine updates (3-day expiry), and class status
   setInterval(() => {
     updateLiveDateBadge();
+    checkAndPruneRoutineUpdates();
     if (state.activeView === "batch") {
       renderBatchRoutine();
     }
