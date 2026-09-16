@@ -2092,10 +2092,33 @@ function setupEventListeners() {
   }, 60000);
 }
 
+/**
+ * Real-Time Visitor Counter & Presence Integration
+ */
+function initRealtimeVisitorTracker() {
+  if (window.firebaseSync && typeof window.firebaseSync.initVisitorTracker === "function") {
+    window.firebaseSync.initVisitorTracker((stats) => {
+      if (stats.online !== undefined) {
+        const liveEl = document.getElementById("liveVisitorCount");
+        if (liveEl) {
+          liveEl.textContent = Number(stats.online).toLocaleString();
+        }
+      }
+      if (stats.total !== undefined) {
+        const totalEl = document.getElementById("totalVisitorCount");
+        if (totalEl) {
+          totalEl.textContent = Number(stats.total).toLocaleString();
+        }
+      }
+    });
+  }
+}
+
 // Boot on Load
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme(state.theme);
   initSheetInput();
   setupEventListeners();
   loadInitialData();
+  initRealtimeVisitorTracker();
 });

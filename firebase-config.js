@@ -167,6 +167,109 @@ class FirebaseSyncService {
       return null;
     }
   }
+
+  /**
+   * Real-time visitor counter & live presence tracker (100% Real, Firestore-backed)
+   */
+  initVisitorTracker(onUpdate) {
+    if (!this.initialized && !this.init()) {
+      console.warn("Visitor tracker could not initialize Firebase");
+      return;
+    }
+
+    try {
+      // 1. Generate or recover Session ID for presence tracking
+      let sessionId = sessionStorage.getItem('ice_routine_session_id');
+      if (!sessionId) {
+        sessionId = 'vis_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+        sessionStorage.setItem('ice_routine_session_id', sessionId);
+      }
+
+      // 2. Track new visit session once per browser session
+      const hasVisited = sessionStorage.getItem('ice_routine_visit_logged');
+      if (!hasVisited) {
+        sessionStorage.setItem('ice_routine_visit_logged', '1');
+        const statsDocRef = this.db.collection('site_stats').doc('visitors');
+        statsDocRef.set({
+          totalVisits: firebase.firestore.FieldValue.increment(1),
+          lastVisitedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).catch(err => {
+          console.warn("Could not increment total visits:", err);
+        });
+      }
+
+      // 3. Register live presence
+      const presenceDocRef = this.db.collection('site_presence').doc(sessionId);
+      const pingPresence = () => {
+        presenceDocRef.set({
+          lastActive: Date.now()
+        }, { merge: true }).catch(() => {});
+      };
+
+      pingPresence();
+      setInterval(pingPresence, 25000);
+
+      // Clean up presence on tab close / navigate away
+      const cleanupPresence = () => {
+        try {
+          presenceDocRef.delete();
+        } catch (e) {}
+      };
+      window.addEventListener('pagehide', cleanupPresence);
+      window.addEventListener('beforeunload', cleanupPresence);
+
+      // 4. Real-time listener for Live Online Visitors
+      this.db.collection('site_presence').onSnapshot((snapshot) => {
+        const now = Date.now();
+        const ACTIVE_THRESHOLD_MS = 65000; // Active within the last 65 seconds
+        let activeCount = 0;
+        const staleDocs = [];
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data && typeof data.lastActive === 'number') {
+            if (now - data.lastActive <= ACTIVE_THRESHOLD_MS) {
+              activeCount++;
+            } else if (now - data.lastActive > 300000) {
+              // Stale for more than 5 minutes, mark for pruning
+              staleDocs.push(doc.ref);
+            }
+          }
+        });
+
+        // Always show at least 1 (the current user)
+        const finalOnline = Math.max(1, activeCount);
+
+        // Opportunistic housekeeping: prune stale docs (max 5 per cycle)
+        if (staleDocs.length > 0) {
+          staleDocs.slice(0, 5).forEach(ref => ref.delete().catch(() => {}));
+        }
+
+        if (onUpdate) {
+          onUpdate({ online: finalOnline });
+        }
+      }, (err) => {
+        console.warn("Firestore live presence subscription error:", err);
+        if (onUpdate) onUpdate({ online: 1 });
+      });
+
+      // 5. Real-time listener for Total Visits
+      this.db.collection('site_stats').doc('visitors').onSnapshot((doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          const total = data.totalVisits || 1;
+          if (onUpdate) {
+            onUpdate({ total: total });
+          }
+        }
+      }, (err) => {
+        console.warn("Firestore total visits subscription error:", err);
+      });
+
+    } catch (err) {
+      console.error("Error starting visitor tracker:", err);
+    }
+  }
 }
 
 // Global instance

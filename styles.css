@@ -2498,6 +2498,115 @@ body {
 }
 
 /* ==========================================================================
+   REAL-TIME VISITOR COUNTER (GENUINE LIVE PRESENCE & TOTAL VISITS)
+   ========================================================================== */
+.footer-visitor-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.realtime-visitor-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.95rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  cursor: default;
+}
+
+.realtime-visitor-pill:hover {
+  transform: translateY(-1.5px);
+  border-color: rgba(2, 132, 199, 0.4);
+  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.12), 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.visitor-live-group,
+.visitor-total-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.visitor-pulse-dot {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.visitor-pulse-dot .pulse-core {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #34d399;
+  z-index: 2;
+}
+
+.visitor-pulse-dot .pulse-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.6);
+  animation: beaconWave 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.visitor-stat-label {
+  font-size: 0.735rem;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: -0.01em;
+}
+
+.visitor-stat-value {
+  font-family: var(--font-main);
+  font-size: 0.81rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  transition: all 0.3s ease;
+}
+
+#liveVisitorCount {
+  color: #15803d;
+}
+
+#totalVisitorCount {
+  color: #0284c7;
+}
+
+.visitor-pill-divider {
+  width: 1px;
+  height: 13px;
+  background: rgba(203, 213, 225, 0.85);
+  display: inline-block;
+}
+
+.visitor-eye-icon {
+  color: #0284c7;
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: transform 0.2s ease;
+}
+
+.realtime-visitor-pill:hover .visitor-eye-icon {
+  transform: scale(1.15);
+}
+
+/* ==========================================================================
    MINIMAL STANDARD CYBER DEV BADGE (DEVELOPED BY HRIDOY)
    ========================================================================== */
 .footer-credit-group {

@@ -286,6 +286,29 @@
         </p>
       </div>
 
+      <!-- Real-Time Live & Total Visitor Counter -->
+      <div class="footer-visitor-wrapper" aria-label="Real-time Visitor Counter">
+        <div class="realtime-visitor-pill" id="realtimeVisitorBadge" title="Real-time Online Visitors & Total Site Visits">
+          <div class="visitor-live-group" title="Currently Active Online Visitors">
+            <span class="visitor-pulse-dot" aria-hidden="true">
+              <span class="pulse-ring"></span>
+              <span class="pulse-core"></span>
+            </span>
+            <span class="visitor-stat-label">Live:</span>
+            <span class="visitor-stat-value" id="liveVisitorCount">1</span>
+          </div>
+          <span class="visitor-pill-divider" aria-hidden="true"></span>
+          <div class="visitor-total-group" title="Total Website Visits (Recorded in Real-time)">
+            <svg class="visitor-eye-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span class="visitor-stat-label">Total Visits:</span>
+            <span class="visitor-stat-value" id="totalVisitorCount">--</span>
+          </div>
+        </div>
+      </div>
+
       <div class="footer-credit-group">
         <span class="footer-cloud-pill" id="headerCloudBadge" title="Real-time Cloud Sync" style="display: none;">
           <span class="live-dot-green"></span>
