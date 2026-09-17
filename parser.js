@@ -282,8 +282,19 @@ function parseRoutineData(csvText) {
     }
   }
 
+  let semester = "Fall-2026";
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const rowText = rows[i].join(" ");
+    const semMatch = rowText.match(/(Fall|Spring|Summer)\s*[-–—]?\s*(\d{4})/i);
+    if (semMatch) {
+      semester = `${semMatch[1].charAt(0).toUpperCase() + semMatch[1].slice(1).toLowerCase()}-${semMatch[2]}`;
+      break;
+    }
+  }
+
   const routine = {
     title: "DIU ICE Class Routine",
+    semester: semester,
     batches: {},
     allBatchesList: [],
     timeSlots: timeSlots.map(t => t.name),

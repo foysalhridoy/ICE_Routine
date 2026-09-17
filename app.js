@@ -8,7 +8,9 @@ const state = {
   routine: null,
   routineUpdates: [],
   selectedBatch: "L1T1",
-  activeView: "batch", // "batch" | "master" | "teacher" | "room"
+  activeView: "batch", // "batch" | "master" | "teacher" | "room" | "courses"
+  courseLevelFilter: "all",
+  courseSearchQuery: "",
   dayFilter: "all", // "all" | "today"
   searchQuery: "",
   displayMode: localStorage.getItem("ice_display_mode") || "table", // "table" | "cards"
@@ -18,6 +20,27 @@ const state = {
   selectedRoom: null,
   currentModalInitial: null
 };
+
+if (typeof window !== "undefined") {
+  window.state = state;
+}
+
+/**
+ * Switch batch and view safely
+ */
+function switchBatch(batch) {
+  state.selectedBatch = batch;
+  state.activeView = "batch";
+  updateViewTabs();
+  document.querySelectorAll(".batch-chip").forEach(c => {
+    c.classList.toggle("active", c.textContent.trim() === batch);
+  });
+  renderStats();
+  renderCurrentView();
+}
+if (typeof window !== "undefined") {
+  window.switchBatch = switchBatch;
+}
 
 // DOM Element References
 const elements = {
@@ -144,7 +167,13 @@ function showToast(message, type = "success") {
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(6px)';
-    setTimeout(() => toast.remove(), 250);
+    setTimeout(() => {
+      if (typeof toast.remove === "function") {
+        toast.remove();
+      } else if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 250);
   }, 3200);
 }
 
@@ -821,11 +850,7 @@ function renderBatchChips() {
     chip.className = `batch-chip ${batch === state.selectedBatch ? "active" : ""}`;
     chip.textContent = batch;
     chip.onclick = () => {
-      state.selectedBatch = batch;
-      document.querySelectorAll(".batch-chip").forEach(c => c.classList.remove("active"));
-      chip.classList.add("active");
-      renderStats();
-      renderCurrentView();
+      switchBatch(batch);
     };
     elements.batchChipsContainer.appendChild(chip);
   });
@@ -977,10 +1002,19 @@ function closeFacultyModal() {
   elements.facultyModalOverlay.classList.remove("active");
 }
 
+if (typeof window !== "undefined") {
+  window.openFacultyModal = openFacultyModal;
+  window.closeFacultyModal = closeFacultyModal;
+}
+
 /**
  * Render based on current view
  */
 function renderCurrentView() {
+  if (state.activeView === "courses") {
+    renderCoursesView();
+    return;
+  }
   if (!state.routine) return;
   if (state.activeView === "batch") {
     renderBatchRoutine();
@@ -1175,6 +1209,9 @@ function renderBatchRoutine() {
                         <span>${cls.time}</span>
                       </div>
                     </div>
+                    ${course.title && course.title !== "Course Title Not Specified" ? `
+                      <div class="class-card-name">${course.title}</div>
+                    ` : ''}
                     <div class="class-card-bottom">
                       <div class="class-card-room">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1183,7 +1220,7 @@ function renderBatchRoutine() {
                         </svg>
                         <span>${cls.room}</span>
                       </div>
-                      <span class="teacher-initial-tag">${cls.teacher}</span>
+                      <span class="teacher-initial-tag" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="Click to view faculty details for ${cls.teacher}" role="button" tabindex="0">${cls.teacher}</span>
                     </div>
                   </div>
                 `;
@@ -1226,7 +1263,12 @@ function renderBatchRoutine() {
                 </div>
               </td>` : ""}
             <td class="course-cell-code">
-              <div class="course-code-main"><strong>${cls.courseCode}</strong></div>
+              <div class="course-cell-wrapper">
+                <span class="course-code-main"><strong>${cls.courseCode}</strong></span>
+                ${course.title && course.title !== "Course Title Not Specified" ? `
+                  <span class="course-title-sub" title="${course.title}">${course.title}</span>
+                ` : ""}
+              </div>
             </td>
             <td class="time-cell-text">
               <div>${cls.time}</div>
@@ -1234,7 +1276,7 @@ function renderBatchRoutine() {
             </td>
             <td class="room-cell-text">${cls.room}</td>
             <td>
-              <span class="teacher-initial-tag">${cls.teacher}</span>
+              <span class="teacher-initial-tag" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="Click to view faculty details for ${cls.teacher}" role="button" tabindex="0">${cls.teacher}</span>
             </td>
           </tr>
         `;
@@ -1295,6 +1337,8 @@ function renderBatchRoutine() {
 
       ${viewToggleBarHtml}
       ${scheduleBodyHtml}
+
+
 
       <div class="routine-footer-meta">
         <div>Routine for <strong>${batch}</strong> &bull; DIU Smart Routine Engine</div>
@@ -1410,7 +1454,7 @@ function renderMasterView() {
         <div style="margin-bottom: 2rem; border-bottom: 1px solid var(--card-border); padding-bottom: 1.5rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
             <h4 style="font-size: 1.25rem; color: var(--primary); font-weight: 800;">${b}</h4>
-            <button class="btn btn-secondary btn-sm" onclick="state.selectedBatch='${b}'; state.activeView='batch'; updateViewTabs(); renderStats(); renderCurrentView();">
+            <button class="btn btn-secondary btn-sm" onclick="switchBatch('${b}')">
               View Routine Format &rarr;
             </button>
           </div>
@@ -1469,7 +1513,14 @@ function renderTeacherView() {
   const selectedTeacher = state.selectedTeacher || teachers[0] || "AKP";
   state.selectedTeacher = selectedTeacher;
 
-  const fac = getFacultyInfo(selectedTeacher);
+  const fac = getFacultyInfo(selectedTeacher) || {
+    initial: selectedTeacher,
+    name: `Faculty Member (${selectedTeacher})`,
+    designation: "Faculty Member",
+    department: "Department of ICE",
+    photoUrl: "",
+    profileUrl: ""
+  };
 
   const teacherClasses = [];
   state.routine.allBatchesList.forEach(b => {
@@ -1510,17 +1561,25 @@ function renderTeacherView() {
       </tr>
     `;
   } else {
-    tableContentHtml = displayedTeacherClasses.map(c => `
-      <tr>
-        <td><strong>${c.day}</strong></td>
-        <td>${c.time}</td>
-        <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
-        <td class="course-cell-code">
-          <div class="course-code-main"><strong>${c.courseCode}</strong></div>
-        </td>
-        <td class="room-cell-text">${c.room}</td>
-      </tr>
-    `).join("");
+    tableContentHtml = displayedTeacherClasses.map(c => {
+      const cInfo = getCourseInfo(c.courseCode);
+      return `
+        <tr>
+          <td><strong>${c.day}</strong></td>
+          <td>${c.time}</td>
+          <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
+          <td class="course-cell-code">
+            <div class="course-cell-wrapper">
+              <span class="course-code-main"><strong>${c.courseCode}</strong></span>
+              ${cInfo.title && cInfo.title !== "Course Title Not Specified" ? `
+                <span class="course-title-sub" title="${cInfo.title}">${cInfo.title}</span>
+              ` : ""}
+            </div>
+          </td>
+          <td class="room-cell-text">${c.room}</td>
+        </tr>
+      `;
+    }).join("");
   }
 
   let html = `
@@ -1632,19 +1691,27 @@ function renderRoomView() {
       </tr>
     `;
   } else {
-    tableContentHtml = displayedRoomClasses.map(c => `
-      <tr>
-        <td><strong>${c.day}</strong></td>
-        <td>${c.time}</td>
-        <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
-        <td class="course-cell-code">
-          <div class="course-code-main"><strong>${c.courseCode}</strong></div>
-        </td>
-        <td>
-          <span class="teacher-initial-tag">${c.teacher}</span>
-        </td>
-      </tr>
-    `).join("");
+    tableContentHtml = displayedRoomClasses.map(c => {
+      const cInfo = getCourseInfo(c.courseCode);
+      return `
+        <tr>
+          <td><strong>${c.day}</strong></td>
+          <td>${c.time}</td>
+          <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
+          <td class="course-cell-code">
+            <div class="course-cell-wrapper">
+              <span class="course-code-main"><strong>${c.courseCode}</strong></span>
+              ${cInfo.title && cInfo.title !== "Course Title Not Specified" ? `
+                <span class="course-title-sub" title="${cInfo.title}">${cInfo.title}</span>
+              ` : ""}
+            </div>
+          </td>
+          <td>
+            <span class="teacher-initial-tag" onclick="openFacultyModal('${c.teacher}', '${c.courseCode}')" title="Click to view faculty details for ${c.teacher}" role="button" tabindex="0">${c.teacher}</span>
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
 
   let html = `
@@ -1804,10 +1871,14 @@ async function downloadAsImage() {
           rowIdx++;
           const fac = getFacultyInfo(cls.teacher);
           const facName = fac && fac.name ? fac.name : cls.teacher;
+          const cInfo = getCourseInfo(cls.courseCode);
           rowsHtml += `
             <tr>
               <td style="${S.dayTd}background:${dc.bg};color:${dc.text};">${day}</td>
-              <td style="${S.codeTd}background:${bg};">${cls.courseCode}</td>
+              <td style="${S.codeTd}background:${bg};">
+                <div style="font-weight:800;color:#0284c7;">${cls.courseCode}</div>
+                ${cInfo.title && cInfo.title !== "Course Title Not Specified" ? `<div style="font-size:10.5px;font-weight:600;color:#475569;margin-top:2px;line-height:1.25;">${cInfo.title}</div>` : ""}
+              </td>
               <td style="${S.tdBase}background:${bg};">${cls.time}</td>
               <td style="${S.tdBase}background:${bg};">${cls.room}</td>
               <td style="${S.tdBase}background:${bg};font-weight:600;">${cls.teacher}</td>
@@ -1973,7 +2044,150 @@ function exportToCalendar() {
   showToast("Calendar (.ics) file exported!", "success");
 }
 
+/**
+ * RENDER OFFICIAL COURSE SYLLABUS / CURRICULUM VIEW
+ * Synchronized with Image 1 and Image 2 from Department Syllabus
+ */
+function renderCoursesView() {
+  const container = elements.routineDisplayArea;
+  if (!container) return;
+
+  const allCourses = (typeof OFFICIAL_CURRICULUM !== "undefined" && OFFICIAL_CURRICULUM.length > 0)
+    ? OFFICIAL_CURRICULUM
+    : Object.entries(COURSE_CATALOG).map(([code, val]) => ({ code, ...val }));
+
+  const currentFilter = state.courseLevelFilter || "all";
+  const search = (state.courseSearchQuery || "").trim().toLowerCase();
+
+  const filtered = allCourses.filter(c => {
+    // Level filter
+    if (currentFilter !== "all") {
+      if (currentFilter === "Elective") {
+        if (c.level !== "Elective" && c.type !== "Elective") return false;
+      } else if (c.level !== currentFilter) {
+        return false;
+      }
+    }
+    // Search filter
+    if (search) {
+      const matchCode = c.code.toLowerCase().includes(search);
+      const matchTitle = c.title.toLowerCase().includes(search);
+      const matchType = (c.type || "").toLowerCase().includes(search);
+      if (!matchCode && !matchTitle && !matchType) return false;
+    }
+    return true;
+  });
+
+  const totalCredits = allCourses.reduce((sum, c) => sum + (c.credit || 0), 0);
+  const theoryCount = allCourses.filter(c => c.type === "Theory" || c.type === "GED").length;
+  const labCount = allCourses.filter(c => c.type === "Lab").length;
+
+  container.innerHTML = `
+    <div class="courses-catalog-container">
+      <div class="catalog-header-card">
+        <div class="catalog-header-top">
+          <div class="catalog-title-group">
+            <h2>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+                <path d="M6 6h10M6 10h10"/>
+              </svg>
+              <span>ICE Department Course Syllabus &amp; Curriculum</span>
+            </h2>
+            <p>Official Department Course Catalog &bull; Level 1 to Level 4 &amp; Electives</p>
+          </div>
+          <div class="catalog-stats-pills">
+            <span class="catalog-stat-pill primary">${allCourses.length} Total Courses</span>
+            <span class="catalog-stat-pill">${totalCredits} Total Credits</span>
+            <span class="catalog-stat-pill">${theoryCount} Theory &bull; ${labCount} Labs</span>
+          </div>
+        </div>
+
+        <div class="catalog-controls-row">
+          <div class="catalog-search-wrapper">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.3-4.3"/>
+            </svg>
+            <input 
+              type="text" 
+              class="catalog-search-input" 
+              id="catalogSearchInput" 
+              placeholder="Search course code, title, or type..." 
+              value="${state.courseSearchQuery || ""}"
+            />
+          </div>
+
+          <div class="catalog-filter-chips">
+            <button class="catalog-filter-btn ${currentFilter === 'all' ? 'active' : ''}" onclick="setCourseLevelFilter('all')">All Levels (${allCourses.length})</button>
+            <button class="catalog-filter-btn ${currentFilter === 'Level 1' ? 'active' : ''}" onclick="setCourseLevelFilter('Level 1')">Level 1</button>
+            <button class="catalog-filter-btn ${currentFilter === 'Level 2' ? 'active' : ''}" onclick="setCourseLevelFilter('Level 2')">Level 2</button>
+            <button class="catalog-filter-btn ${currentFilter === 'Level 3' ? 'active' : ''}" onclick="setCourseLevelFilter('Level 3')">Level 3</button>
+            <button class="catalog-filter-btn ${currentFilter === 'Level 4' ? 'active' : ''}" onclick="setCourseLevelFilter('Level 4')">Level 4</button>
+            <button class="catalog-filter-btn ${currentFilter === 'Elective' ? 'active' : ''}" onclick="setCourseLevelFilter('Elective')">Electives</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="catalog-table-card">
+        <div class="table-scroll-container">
+          <table class="catalog-table">
+            <thead>
+              <tr>
+                <th style="width: 140px;">Code</th>
+                <th>Course Title</th>
+                <th class="center" style="width: 80px;">Cr. H</th>
+                <th class="center" style="width: 100px;">Type</th>
+                <th style="width: 110px;">Level</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.length === 0 ? `
+                <tr>
+                  <td colspan="5" style="text-align: center; padding: 2.5rem 1rem; color: #64748b;">
+                    No courses found matching "${search}".
+                  </td>
+                </tr>
+              ` : filtered.map(c => `
+                <tr>
+                  <td class="catalog-code-cell">${c.code}</td>
+                  <td class="catalog-title-cell">${c.title}</td>
+                  <td class="center catalog-credit-cell">${c.credit}</td>
+                  <td class="center">
+                    <span class="course-credit-chip chip-${(c.type || 'theory').toLowerCase()}">${c.type}</span>
+                  </td>
+                  <td>
+                    <span style="font-size: 0.8rem; font-weight: 600; color: #475569;">${c.level || "General"}</span>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("catalogSearchInput")?.addEventListener("input", (e) => {
+    state.courseSearchQuery = e.target.value;
+    renderCoursesView();
+    const newIn = document.getElementById("catalogSearchInput");
+    if (newIn) {
+      newIn.focus();
+      newIn.selectionStart = newIn.selectionEnd = newIn.value.length;
+    }
+  });
+}
+window.renderCoursesView = renderCoursesView;
+
+function setCourseLevelFilter(level) {
+  state.courseLevelFilter = level;
+  renderCoursesView();
+}
+window.setCourseLevelFilter = setCourseLevelFilter;
+
 function updateViewTabs() {
+  elements.viewTabs = document.querySelectorAll(".nav-tab-btn");
   elements.viewTabs.forEach(tab => {
     if (tab.dataset.view === state.activeView) {
       tab.classList.add("active");
@@ -1981,6 +2195,14 @@ function updateViewTabs() {
       tab.classList.remove("active");
     }
   });
+
+  const batchSection = document.getElementById("batchSelectorSection");
+  if (batchSection) {
+    batchSection.style.display = (state.activeView === "courses") ? "none" : "";
+  }
+  if (elements.statsBanner) {
+    elements.statsBanner.style.display = (state.activeView === "courses") ? "none" : "";
+  }
 }
 
 /**
