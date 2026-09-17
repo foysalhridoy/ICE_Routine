@@ -358,6 +358,10 @@ function detectRoutineChanges(oldBatches, newBatches) {
 function processRoutineDataUpdate(newRoutine, isInitial = false, cloudUpdates = null) {
   if (!newRoutine || !newRoutine.batches) return;
 
+  try {
+    localStorage.setItem("diu_ice_cached_routine", JSON.stringify(newRoutine));
+  } catch (e) {}
+
   // 1. If cloud delivered explicit updates
   if (Array.isArray(cloudUpdates)) {
     const activeCloud = getActiveRoutineUpdates(cloudUpdates);
@@ -656,14 +660,59 @@ async function publishCurrentRoutineToCloud(sourceUrl, sourceType = "google_shee
 }
 
 /**
- * Load Initial Data (Cloud Firestore, Fall-2026 local copy or live sync)
+ * Load Initial Data (Instant Cache-First + Silent Background Cloud Sync)
  */
 async function loadInitialData() {
   updateCloudSyncUI();
   updateLiveDateBadge();
-  setLoading(true, "Loading Routine...");
 
-  // 1. Try loading from Firebase Cloud Firestore first
+  let hasRendered = false;
+
+  // 1. Instant Cache Render: If cached routine exists in localStorage, render in 0ms!
+  try {
+    const cached = localStorage.getItem("diu_ice_cached_routine");
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && parsed.batches && Object.keys(parsed.batches).length > 0) {
+        state.routine = parsed;
+        processRoutineDataUpdate(state.routine, true);
+        onDataLoaded("Ready");
+        hasRendered = true;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not load cached routine:", e);
+  }
+
+  // 2. Immediate Local File Load if no cache (first visit): loads default CSV in ~15ms
+  if (!hasRendered) {
+    setLoading(true, "Loading Routine...");
+    try {
+      const resp = await fetch("data/default_routine.csv");
+      if (resp.ok) {
+        const csvText = await resp.text();
+        state.routine = parseRoutineData(csvText);
+        processRoutineDataUpdate(state.routine, true);
+        onDataLoaded("Ready");
+        hasRendered = true;
+      }
+    } catch (e) {
+      console.warn("Could not load local default CSV:", e);
+    }
+  }
+
+  // 3. Silent Background Cloud Sync: Check Firebase without freezing the screen
+  syncWithCloudInBackground(!hasRendered);
+}
+
+/**
+ * Background Cloud Synchronization (Non-Blocking)
+ */
+async function syncWithCloudInBackground(shouldShowLoader = false) {
+  if (shouldShowLoader) {
+    setLoading(true, "Connecting to Cloud...");
+  }
+
   if (window.firebaseSync && window.firebaseSync.isConfigured()) {
     try {
       const cloudData = await window.firebaseSync.fetchActiveRoutine();
@@ -678,34 +727,21 @@ async function loadInitialData() {
         if (cloudData.sheetUrl && elements.sheetUrlInput && cloudData.sourceType !== "file_upload") {
           elements.sheetUrlInput.value = cloudData.sheetUrl;
         }
-        processRoutineDataUpdate(state.routine, true, cloudData.recentUpdates);
+        processRoutineDataUpdate(state.routine, false, cloudData.recentUpdates);
         onDataLoaded("Cloud Synced");
         subscribeToCloudUpdates();
         return;
       }
     } catch (err) {
-      console.warn("Could not load from Firebase, falling back to local...", err);
+      console.warn("Cloud background sync check:", err);
     }
   }
 
-  // 2. Fallback to local default CSV
-  try {
-    const resp = await fetch("data/default_routine.csv");
-    if (resp.ok) {
-      const csvText = await resp.text();
-      state.routine = parseRoutineData(csvText);
-      processRoutineDataUpdate(state.routine, true);
-      onDataLoaded("Ready");
-      subscribeToCloudUpdates();
-      return;
-    }
-  } catch (e) {
-    console.warn("Could not load local default CSV, attempting live sheet...", e);
+  if (!state.routine) {
+    await fetchSheetData(state.defaultSheetUrl);
+  } else {
+    subscribeToCloudUpdates();
   }
-
-  // 3. Fallback to live Google Sheet
-  await fetchSheetData(state.defaultSheetUrl);
-  subscribeToCloudUpdates();
 }
 
 /**
