@@ -161,20 +161,15 @@ function showToast(message, type = "success") {
   if (!container) return;
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
-  const icon = type === 'success' ? '⚡' : type === 'error' ? '⚠' : 'ℹ';
-  toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-msg">${message}</span>`;
+  toast.innerHTML = `<span class="toast-dot ${type}"></span><span class="toast-msg">${message}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateY(6px)';
+    toast.style.transform = 'translateY(4px) scale(0.95)';
     setTimeout(() => {
-      if (typeof toast.remove === "function") {
-        toast.remove();
-      } else if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    }, 250);
-  }, 3200);
+      toast.remove ? toast.remove() : toast.parentNode?.removeChild(toast);
+    }, 150);
+  }, 1400);
 }
 
 /**
@@ -441,7 +436,7 @@ function processRoutineDataUpdate(newRoutine, isInitial = false, cloudUpdates = 
       renderNewsTicker(merged);
 
       if (!isInitial) {
-        showToast(`⚡ ${newChanges.length} routine update${newChanges.length > 1 ? "s" : ""} detected in Excel!`, "success");
+        showToast(`${newChanges.length} updates`, "success");
       }
     } else {
       // No changes detected in this load/sync against the baseline snapshot.
@@ -536,7 +531,6 @@ function renderNewsTicker(updates = []) {
             <span class="ticker-day-tag">${item.day}</span>
             <span class="ticker-item-text"><strong>${item.batch}</strong> schedule updated on <strong>${item.day}</strong></span>
             ${timePill}
-            <span class="ticker-item-arrow" aria-hidden="true">→</span>
           </div>
         `;
       }).join("");
@@ -609,8 +603,6 @@ function handleTickerItemClick(batch, day) {
       routineArea.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, 100);
-
-  showToast(`📌 Showing ${batch} (${day} schedule updated)`, "info");
 }
 
 function subscribeToCloudUpdates() {
@@ -633,7 +625,7 @@ function subscribeToCloudUpdates() {
 
     processRoutineDataUpdate(state.routine, false, cloudData.recentUpdates);
     onDataLoaded("Live Synced from Cloud");
-    showToast("🔥 Routine updated globally from Cloud!", "success");
+    showToast("Synced!", "success");
   });
 }
 
@@ -652,10 +644,10 @@ async function publishCurrentRoutineToCloud(sourceUrl, sourceType = "google_shee
       sourceType: sourceType,
       recentUpdates: activeUpdates
     });
-    showToast("🚀 Published Globally! All students will now see this routine.", "success");
+    showToast("Published!", "success");
   } catch (err) {
     console.warn("Failed to publish to Firebase:", err);
-    showToast("Cloud sync failed: " + err.message, "error");
+    showToast("Failed", "error");
   }
 }
 
@@ -749,7 +741,7 @@ async function syncWithCloudInBackground(shouldShowLoader = false) {
  */
 async function fetchSheetData(url) {
   if (!url) {
-    showToast("Please provide a valid Google Sheet URL", "error");
+    showToast("Invalid URL", "error");
     return;
   }
 
@@ -781,7 +773,7 @@ async function fetchSheetData(url) {
     if (window.firebaseSync && window.firebaseSync.isConfigured()) {
       await publishCurrentRoutineToCloud(url, "google_sheet");
     } else {
-      showToast("Live routine successfully synced on this device!", "success");
+      showToast("Synced!", "success");
     }
   } catch (err) {
     console.error("Fetch error:", err);
@@ -796,7 +788,7 @@ async function fetchSheetData(url) {
       }
     } catch (le) {}
 
-    showToast("Failed to fetch sheet: " + err.message, "error");
+    showToast("Fetch failed", "error");
     setLoading(false, "Sync Failed");
   }
 }
@@ -834,11 +826,11 @@ function handleFileUpload(file) {
       if (window.firebaseSync && window.firebaseSync.isConfigured()) {
         await publishCurrentRoutineToCloud("Local Upload: " + file.name, "file_upload");
       } else {
-        showToast("Routine imported successfully on this device!", "success");
+        showToast("Imported!", "success");
       }
     } catch (err) {
       console.error(err);
-      showToast("Error parsing uploaded file: " + err.message, "error");
+      showToast("Import failed", "error");
       setLoading(false, "Upload Error");
     }
   };
@@ -929,30 +921,46 @@ function renderStats() {
 
   elements.statsBanner.innerHTML = `
     <div class="stat-box">
-      <div class="stat-icon blue">📚</div>
-      <div>
+      <div class="stat-icon blue">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+      </div>
+      <div class="stat-data">
         <div class="stat-value">${courseList.length}</div>
         <div class="stat-label">Total Courses</div>
       </div>
     </div>
     <div class="stat-box">
-      <div class="stat-icon green">🎓</div>
-      <div>
-        <div class="stat-value">${totalCredits} Cr</div>
+      <div class="stat-icon green">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+        </svg>
+      </div>
+      <div class="stat-data">
+        <div class="stat-value">${totalCredits} <span class="stat-unit">Cr</span></div>
         <div class="stat-label">Credit Hours</div>
       </div>
     </div>
     <div class="stat-box">
-      <div class="stat-icon amber">⏱️</div>
-      <div>
+      <div class="stat-icon amber">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="stat-data">
         <div class="stat-value">${totalClasses}</div>
         <div class="stat-label">Weekly Classes</div>
       </div>
     </div>
     <div class="stat-box">
-      <div class="stat-icon purple">🏖️</div>
-      <div>
-        <div class="stat-value">${offdayCount} Days</div>
+      <div class="stat-icon purple">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>
+        </svg>
+      </div>
+      <div class="stat-data">
+        <div class="stat-value">${offdayCount} <span class="stat-unit">Days</span></div>
         <div class="stat-label">Weekly Offdays</div>
       </div>
     </div>
@@ -1798,11 +1806,9 @@ function renderRoomView() {
  */
 async function downloadAsImage() {
   if (!state.routine) {
-    showToast("No routine loaded yet", "error");
+    showToast("No routine", "error");
     return;
   }
-
-  showToast("Rendering high-res routine image...", "info");
 
   try {
     if (typeof html2canvas === "undefined") {
@@ -1812,7 +1818,7 @@ async function downloadAsImage() {
     const batch = state.selectedBatch;
     const schedule = state.routine.batches[batch];
     if (!schedule) {
-      showToast("No schedule for selected batch", "error");
+      showToast("No schedule", "error");
       return;
     }
 
@@ -1982,10 +1988,10 @@ async function downloadAsImage() {
     link.download = `DIU_ICE_${batch}_Routine.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
-    showToast("📸 Routine image downloaded!", "success");
+    showToast("Saved!", "success");
   } catch (err) {
     console.error(err);
-    showToast("Failed to generate image: " + err.message, "error");
+    showToast("Failed", "error");
   }
 }
 
@@ -2025,9 +2031,9 @@ function copyRoutineAsText() {
   text += `Developed by Hridoy (https://github.com/foysalhridoy)`;
 
   navigator.clipboard.writeText(text).then(() => {
-    showToast("📋 Routine copied for WhatsApp/Messenger!", "success");
+    showToast("Copied!", "success");
   }).catch(() => {
-    showToast("Could not copy text to clipboard", "error");
+    showToast("Failed", "error");
   });
 }
 
@@ -2077,7 +2083,7 @@ function exportToCalendar() {
   a.download = `DIU_ICE_${batch}_Routine.ics`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast("Calendar (.ics) file exported!", "success");
+  showToast("Exported!", "success");
 }
 
 /**
@@ -2296,12 +2302,16 @@ function setupEventListeners() {
     });
   });
 
+  let searchDebounceTimer = null;
   elements.searchInput?.addEventListener("input", (e) => {
     state.searchQuery = e.target.value;
     if (elements.searchClearBtn) {
       elements.searchClearBtn.classList.toggle("visible", Boolean(e.target.value.trim()));
     }
-    renderCurrentView();
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      renderCurrentView();
+    }, 60);
   });
 
   elements.searchClearBtn?.addEventListener("click", clearSearchFilter);
