@@ -1368,15 +1368,9 @@ function renderBatchRoutine() {
 
   container.innerHTML = `
     <div class="routine-presentation-card" id="routineCardToExport">
-      <div class="routine-head">
-        <div class="routine-head-info">
-          <h2>Department of Information and Communication Engineering</h2>
-          <p>Daffodil International University &bull; Class Routine (Fall-2026)</p>
-        </div>
-        <div class="routine-badge-box">
-          <div class="badge-batch">${batch}</div>
-          <div class="badge-term">${isTodayOnly ? "Today's Schedule" : "Weekly Schedule"}</div>
-        </div>
+      <div class="print-only-routine-header">
+        <h2>Department of Information and Communication Engineering</h2>
+        <p>Daffodil International University &bull; Class Routine (${state.routine?.semester || "Fall-2026"}) &bull; Batch: <strong>${batch}</strong> (${isTodayOnly ? "Today's Schedule" : "Weekly Schedule"})</p>
       </div>
 
       ${viewToggleBarHtml}

@@ -1744,14 +1744,14 @@ body {
   transform: translateY(0);
 }
 
-/* Routine Display Card (Exact match to Image 1) */
+/* Routine Display Card */
 .routine-presentation-card {
   background: #ffffff;
   color: #0f172a;
   border: 1px solid #e2e8f0;
   border-radius: var(--radius-md);
-  padding: 2rem;
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  padding: 1.25rem 1.4rem;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
   margin-bottom: 2rem;
   position: relative;
   transition: box-shadow 0.25s ease;
@@ -1761,52 +1761,8 @@ body {
   box-shadow: 0 8px 30px -4px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
 }
 
-.routine-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 1.5px solid #e2e8f0;
-  padding-bottom: 1.25rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.routine-head h2 {
-  font-size: 1.42rem;
-  font-weight: 800;
-  color: #0f172a;
-  letter-spacing: -0.02em;
-}
-
-.routine-head p {
-  color: #64748b;
-  font-size: 0.88rem;
-  font-weight: 500;
-}
-
-.routine-badge-box {
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
-  padding: 0.6rem 1.4rem;
-  border-radius: var(--radius-sm);
-  text-align: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-}
-
-.routine-badge-box .badge-batch {
-  font-size: 1.45rem;
-  font-weight: 900;
-  color: #0066ff;
-  letter-spacing: -0.02em;
-}
-
-.routine-badge-box .badge-term {
-  font-size: 0.775rem;
-  color: #64748b;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.print-only-routine-header {
+  display: none;
 }
 
 /* ==========================================================================
@@ -3430,42 +3386,9 @@ body {
 
   /* Routine Presentation Card on phones */
   .routine-presentation-card {
-    padding: 1.1rem 0.75rem;
-    border-radius: var(--radius-sm);
-    margin-bottom: 1.25rem;
-  }
-
-  .routine-head {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-    padding-bottom: 0.85rem;
-    margin-bottom: 0.85rem;
-  }
-
-  .routine-head h2 {
-    font-size: 1.15rem;
-    line-height: 1.25;
-  }
-
-  .routine-head p {
-    font-size: 0.8rem;
-  }
-
-  .routine-badge-box {
-    align-self: flex-start;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.35rem 0.85rem;
-  }
-
-  .routine-badge-box .badge-batch {
-    font-size: 1.25rem;
-  }
-
-  .routine-badge-box .badge-term {
-    font-size: 0.72rem;
+    padding: 0.85rem 0.65rem 0.65rem;
+    border-radius: 14px;
+    margin-bottom: 1rem;
   }
 
   /* Mobile: keep Table/Cards & All Days/Today on the same row side-by-side (Left & Right) */
@@ -3925,6 +3848,27 @@ body {
     box-shadow: none !important;
     padding: 0 !important;
     margin: 0 !important;
+  }
+
+  .print-only-routine-header {
+    display: block !important;
+    text-align: center !important;
+    margin-bottom: 1.25rem !important;
+    padding-bottom: 0.65rem !important;
+    border-bottom: 2px solid #000 !important;
+  }
+
+  .print-only-routine-header h2 {
+    font-size: 15pt !important;
+    font-weight: 800 !important;
+    margin: 0 0 4px 0 !important;
+    color: #000000 !important;
+  }
+
+  .print-only-routine-header p {
+    font-size: 9.5pt !important;
+    margin: 0 !important;
+    color: #333333 !important;
   }
 
   /* Table should expand to full width in print */
