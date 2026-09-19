@@ -3484,6 +3484,7 @@ body {
     display: flex !important;
     justify-content: space-between !important;
     box-sizing: border-box !important;
+    border-radius: 999px !important;
   }
 
   .view-toggle-pill-group .view-toggle-btn,
@@ -3498,7 +3499,7 @@ body {
     text-align: center !important;
     white-space: nowrap !important;
     overflow: visible !important;
-    border-radius: 4px !important;
+    border-radius: 999px !important;
   }
 
   .view-toggle-btn svg {
