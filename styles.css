@@ -3203,9 +3203,9 @@ body {
   /* ORDER ON MOBILE: BATCH SELECTOR & ROUTINE IMMEDIATELY VISIBLE! */
   .batch-selector-section {
     order: 1;
-    padding: 0.75rem 0.85rem 0.55rem;
-    border-radius: var(--radius-sm);
-    margin-bottom: 0.6rem;
+    padding: 0.85rem 0.85rem 0.75rem;
+    border-radius: 14px;
+    margin-bottom: 0.75rem;
     box-shadow: var(--shadow-sm);
   }
 
@@ -3296,30 +3296,35 @@ body {
 
   /* Horizontally scrollable batch chips on phones */
   .batch-chips-grid {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.45rem;
-    gap: 0.4rem;
-    scrollbar-width: thin;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    align-items: center !important;
+    padding: 8px 4px !important;
+    gap: 0.5rem !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
 
   .batch-chips-grid::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  .batch-chips-grid::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   .batch-chip {
-    flex-shrink: 0;
-    padding: 0.45rem 0.85rem;
-    font-size: 0.825rem;
-    min-height: 38px;
-    border-radius: var(--radius-xs);
+    flex-shrink: 0 !important;
+    height: 38px !important;
+    padding: 0 1.05rem !important;
+    font-size: 0.84rem !important;
+    border-radius: 999px !important;
+    box-sizing: border-box !important;
+  }
+
+  .batch-chip:hover,
+  .batch-chip.active {
+    transform: none !important;
   }
 
   /* 2x2 Grid for Stats on Phones */
@@ -3362,11 +3367,14 @@ body {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding: 0.2rem;
+    -ms-overflow-style: none;
+    padding: 0.35rem 0.2rem;
   }
 
   .nav-tabs::-webkit-scrollbar {
     display: none;
+    width: 0;
+    height: 0;
   }
 
   .nav-tab-btn {
