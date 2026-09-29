@@ -1,6 +1,6 @@
 /**
  * DIU ICE Routine Generator - Application Controller
- * Premium UX with Lexend Typography, Verified Faculty Integration & Responsive Layouts
+ * Premium UX with Google Sans & Bengali Typography, Verified Faculty Integration & Responsive Layouts
  */
 
 // Application State
@@ -53,11 +53,7 @@ const elements = {
   statsBanner: document.getElementById("statsBanner"),
   routineDisplayArea: document.getElementById("routineDisplayArea"),
   viewTabs: document.querySelectorAll(".nav-tab-btn"),
-  btnPrint: document.getElementById("btnPrint"),
-  btnDownloadImage: document.getElementById("btnDownloadImage"),
-  btnDownloadRoutine: document.getElementById("btnDownloadRoutine"),
-  downloadDropdownWrapper: document.getElementById("downloadDropdownWrapper"),
-  btnCopyText: document.getElementById("btnCopyText"),
+
   searchInput: document.getElementById("searchInput"),
   searchClearBtn: document.getElementById("searchClearBtn"),
   headerCloudBadge: document.getElementById("headerCloudBadge"),
@@ -214,17 +210,7 @@ function initSheetInput() {
  * Firebase Cloud Sync Management
  */
 function updateCloudSyncUI() {
-  const isConfigured = window.firebaseSync && window.firebaseSync.isConfigured();
-  if (elements.headerCloudBadge) {
-    if (isConfigured) {
-      elements.headerCloudBadge.innerHTML = `<span class="cloud-dot-active"></span> <span>Cloud Live</span>`;
-      elements.headerCloudBadge.title = "Real-time Cloud Sync Active (Firestore)";
-      elements.headerCloudBadge.style.display = "inline-flex";
-    } else {
-      elements.headerCloudBadge.innerHTML = `<span class="status-indicator-dot dot-inactive"></span> <span>Offline</span>`;
-      elements.headerCloudBadge.title = "Using local routine copy";
-    }
-  }
+  // Real-time Cloud sync runs silently in background
 }
 
 /* ==========================================================================
@@ -520,7 +506,7 @@ function renderNewsTicker(updates = []) {
   if (activeUpdates.length > 0) {
     ticker.classList.add("has-updates");
 
-    const buildItemsHtml = () => {
+    const singleGroupItems = () => {
       return activeUpdates.map((item) => {
         const timeAgo = formatTimeAgo(item.timestamp);
         const timePill = timeAgo ? `<span class="ticker-time-pill">${timeAgo}</span>` : "";
@@ -536,19 +522,22 @@ function renderNewsTicker(updates = []) {
       }).join("");
     };
 
-    let html = buildItemsHtml();
-    // Seamless marquee looping: repeat items for continuous non-choppy loop
-    if (activeUpdates.length < 3) {
-      html += buildItemsHtml() + buildItemsHtml() + buildItemsHtml();
-    } else if (activeUpdates.length < 6) {
-      html += buildItemsHtml() + buildItemsHtml();
-    } else {
-      html += buildItemsHtml();
+    let groupHtml = singleGroupItems();
+    if (activeUpdates.length === 1) {
+      groupHtml = singleGroupItems() + singleGroupItems() + singleGroupItems();
+    } else if (activeUpdates.length === 2) {
+      groupHtml = singleGroupItems() + singleGroupItems();
     }
-    track.innerHTML = html;
 
-    const speedSeconds = Math.max(20, activeUpdates.length * 7);
-    track.style.animationDuration = `${speedSeconds}s`;
+    // Mathematical zero-stutter infinite loop: 2 identical groups with identical item gaps
+    track.innerHTML = `
+      <div class="ticker-group">${groupHtml}</div>
+      <div class="ticker-group" aria-hidden="true">${groupHtml}</div>
+    `;
+
+    const effectiveItems = activeUpdates.length === 1 ? 3 : (activeUpdates.length === 2 ? 4 : activeUpdates.length);
+    const speedSeconds = Math.max(22, effectiveItems * 7.5);
+    track.style.setProperty("--ticker-duration", `${speedSeconds}s`);
     track.classList.add("is-animated");
 
     // Click to navigate to updated batch & day
@@ -572,14 +561,20 @@ function renderNewsTicker(updates = []) {
 
     const singleNotice = `
       <div class="ticker-empty-item">
+        <span class="ticker-spark-icon" aria-hidden="true">📢</span>
         <span class="ticker-empty-text">রুটিনে কোনো নতুন আপডেট আসেনি, নতুন আপডেট আসলে জানিয়ে দেওয়া হবে</span>
         <span class="ticker-diamond-sep" aria-hidden="true">✦</span>
       </div>
     `;
 
-    // Seamless right-to-left continuous marquee
-    track.innerHTML = singleNotice + singleNotice + singleNotice + singleNotice;
-    track.style.animationDuration = "28s";
+    const groupHtml = singleNotice + singleNotice;
+
+    // Dual-group loop eliminates jump/jerk at loop boundary
+    track.innerHTML = `
+      <div class="ticker-group">${groupHtml}</div>
+      <div class="ticker-group" aria-hidden="true">${groupHtml}</div>
+    `;
+    track.style.setProperty("--ticker-duration", "32s");
     track.classList.add("is-animated");
   }
 }
@@ -873,16 +868,24 @@ function renderBatchChips() {
   if (!elements.batchChipsContainer || !state.routine) return;
   elements.batchChipsContainer.innerHTML = "";
 
+  // Inner track div — this is what we translateX for smooth ticker
+  const track = document.createElement("div");
+  track.className = "batch-chips-track";
+  track.id = "batchChipsTrack";
+
   state.routine.allBatchesList.forEach(batch => {
     const chip = document.createElement("button");
     chip.className = `batch-chip ${batch === state.selectedBatch ? "active" : ""}`;
     chip.textContent = batch;
-    chip.onclick = () => {
-      switchBatch(batch);
-    };
-    elements.batchChipsContainer.appendChild(chip);
+    chip.onclick = () => { switchBatch(batch); };
+    track.appendChild(chip);
   });
+
+  elements.batchChipsContainer.appendChild(track);
+  // Store track reference for ticker
+  elements.batchChipsTrack = track;
 }
+
 
 /**
  * Render Quick Stats Banner
@@ -1046,9 +1049,293 @@ function closeFacultyModal() {
   elements.facultyModalOverlay.classList.remove("active");
 }
 
+/**
+ * Real-time greeting based on user's current local hour
+ */
+function getTimeGreeting() {
+  const hour = new Date().getHours();
+  if (hour >= 4 && hour < 12) {
+    return { text: "Good morning", icon: "☀️", period: "morning" };
+  } else if (hour >= 12 && hour < 16) {
+    return { text: "Good afternoon", icon: "🌤️", period: "noon" };
+  } else if (hour >= 16 && hour < 20) {
+    return { text: "Good evening", icon: "🌆", period: "evening" };
+  } else {
+    return { text: "Good night", icon: "🌙", period: "night" };
+  }
+}
+window.getTimeGreeting = getTimeGreeting;
+
+/**
+ * Step 1: Automated Welcome & Batch Selection Pop-up
+ * Triggered on website open with time-aware greeting and prompt to choose batch
+ */
+function openWelcomeBatchModal() {
+  const overlay = document.getElementById("todayModalOverlay");
+  const container = document.getElementById("todayClassesContainer");
+  const batchChipsWrap = document.querySelector(".today-batch-selector-wrap");
+  const dateBadgeEl = document.getElementById("todayModalDateBadge");
+  const greetingEl = document.getElementById("todayModalGreeting");
+  const subtitleEl = document.querySelector(".today-modal-subtitle");
+  const footerActionBtn = document.getElementById("btnTodayCloseAction");
+  const viewFullBtn = document.getElementById("btnTodayViewFullRoutine");
+
+  if (!overlay || !container) return;
+
+  overlay.classList.add("is-welcome-mode");
+
+  const greeting = getTimeGreeting();
+  const now = new Date();
+  const currentDayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(now);
+  const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(now).toUpperCase();
+
+  if (dateBadgeEl) {
+    dateBadgeEl.textContent = `${currentDayName.toUpperCase()} · ${formattedDate}`;
+  }
+
+  if (greetingEl) {
+    greetingEl.innerHTML = `${greeting.text} ${greeting.icon}, <span class="today-title-highlight">ICEian!</span>`;
+  }
+
+  if (subtitleEl) {
+    subtitleEl.textContent = "Select your batch to view class routine:";
+  }
+
+  if (batchChipsWrap) {
+    batchChipsWrap.style.display = "none";
+  }
+
+  const batches = (state.routine && state.routine.allBatchesList && state.routine.allBatchesList.length > 0)
+    ? state.routine.allBatchesList
+    : ["L1T1", "L1T2", "L2T1", "L2T2", "L3T1", "L3T2", "L4T1", "L4T2"];
+
+  const termShortMap = {
+    "L1T1": "Y1 · T1",
+    "L1T2": "Y1 · T2",
+    "L2T1": "Y2 · T1",
+    "L2T2": "Y2 · T2",
+    "L3T1": "Y3 · T1",
+    "L3T2": "Y3 · T2",
+    "L4T1": "Y4 · T1",
+    "L4T2": "Y4 · T2",
+  };
+
+  container.innerHTML = `
+    <div class="welcome-batch-step">
+      <div class="welcome-batch-grid">
+        ${batches.map(b => `
+          <button class="welcome-batch-btn ${b === state.selectedBatch ? 'active' : ''}" onclick="selectBatchAndShowToday('${b}')" title="Select Batch ${b}" aria-label="Select Batch ${b}">
+            <span class="batch-code">${b}</span>
+            <span class="batch-term-hint">${termShortMap[b] || "DIU"}</span>
+          </button>
+        `).join("")}
+      </div>
+      <div class="welcome-quick-dismiss">
+        <button type="button" class="welcome-skip-btn" onclick="closeTodayClassesModal()" title="Skip to routine">
+          <span>Continue to routine &rarr;</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  if (viewFullBtn) {
+    viewFullBtn.innerHTML = `<span>View Routine &rarr;</span>`;
+    viewFullBtn.onclick = () => closeTodayClassesModal();
+  }
+
+  if (footerActionBtn) {
+    footerActionBtn.textContent = "Close";
+    footerActionBtn.onclick = () => closeTodayClassesModal();
+  }
+
+  overlay.classList.add("active");
+}
+window.openWelcomeBatchModal = openWelcomeBatchModal;
+
+/**
+ * Selects batch and directly closes popup to reveal main routine (no second popup)
+ */
+function selectBatchAndShowToday(batch) {
+  switchBatch(batch);
+  closeTodayClassesModal();
+  elements.routineDisplayArea?.scrollIntoView({ behavior: "smooth" });
+}
+window.selectBatchAndShowToday = selectBatchAndShowToday;
+
+/**
+ * Interactive Today's Classes Pop-Up Modal (Editorial Zen Style)
+ */
+function openTodayClassesModal(targetBatch = state.selectedBatch) {
+  const overlay = document.getElementById("todayModalOverlay");
+  const container = document.getElementById("todayClassesContainer");
+  const batchChipsWrap = document.querySelector(".today-batch-selector-wrap");
+  const batchChipsEl = document.getElementById("todayBatchChips");
+  const dateBadgeEl = document.getElementById("todayModalDateBadge");
+  const greetingEl = document.getElementById("todayModalGreeting");
+  const subtitleEl = document.querySelector(".today-modal-subtitle");
+  const footerActionBtn = document.getElementById("btnTodayCloseAction");
+  const viewFullBtn = document.getElementById("btnTodayViewFullRoutine");
+
+  if (!overlay || !container) return;
+
+  overlay.classList.remove("is-welcome-mode");
+
+  const greeting = getTimeGreeting();
+  const now = new Date();
+  const currentDayName = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now);
+  const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(now).toUpperCase();
+
+  if (dateBadgeEl) {
+    dateBadgeEl.textContent = `${currentDayName.toUpperCase()} · ${formattedDate}`;
+  }
+
+  if (greetingEl) {
+    greetingEl.innerHTML = `${greeting.text} ${greeting.icon}, <span class="today-title-highlight">${targetBatch}.</span>`;
+  }
+
+  if (subtitleEl) {
+    subtitleEl.textContent = `Here is today's schedule for ${targetBatch} (${currentDayName}):`;
+  }
+
+  // Restore horizontal batch selector in today's classes view
+  if (batchChipsWrap) {
+    batchChipsWrap.style.display = "flex";
+  }
+
+  // Populate batch switcher chips inside popup
+  const batches = (state.routine && state.routine.allBatchesList && state.routine.allBatchesList.length > 0)
+    ? state.routine.allBatchesList
+    : ["L1T1", "L1T2", "L2T1", "L2T2", "L3T1", "L3T2", "L4T1", "L4T2"];
+
+  if (batchChipsEl) {
+    batchChipsEl.innerHTML = batches.map(b => `
+      <button class="today-batch-pill ${b === targetBatch ? 'active' : ''}" onclick="selectBatchAndShowToday('${b}')">
+        ${b}
+      </button>
+    `).join("");
+  }
+
+  if (!state.routine || !state.routine.batches || !state.routine.batches[targetBatch]) {
+    container.innerHTML = `
+      <div class="today-empty-card">
+        <div class="today-empty-icon">📂</div>
+        <h4>No routine data available for ${targetBatch}</h4>
+        <p>Please wait for routine data to sync or select another batch.</p>
+      </div>
+    `;
+    overlay.classList.add("active");
+    return;
+  }
+
+  const schedule = state.routine.batches[targetBatch];
+  const classesToday = schedule[currentDayName] || [];
+
+  if (currentDayName === "Friday" || classesToday.length === 0) {
+    container.innerHTML = `
+      <div class="today-zen-offday-card">
+        <div class="zen-offday-top">
+          <span class="zen-icon">${currentDayName === "Friday" ? "🏖️" : "🌱"}</span>
+          <span class="zen-tag">DAILY RITUAL · REST</span>
+        </div>
+        <h3 class="zen-title">${currentDayName === "Friday" ? "Happy Friday Weekend!" : "No Classes for " + targetBatch + " Today"}</h3>
+        <p class="zen-desc">
+          ${currentDayName === "Friday" ? "It is the university weekend. Take three deep breaths, review your weekly progress, and recharge." : "You have an official offday today (" + currentDayName + "). Take this time for self-study, relax, or preview the weekly routine."}
+        </p>
+        <div class="zen-action-row">
+          <button class="btn btn-primary btn-sm" onclick="closeTodayClassesModal(); switchBatch('${targetBatch}');">
+            View Full Timetable &rarr;
+          </button>
+        </div>
+      </div>
+    `;
+  } else {
+    // Classes exist today
+    let liveNowCount = 0;
+    const cardsHtml = classesToday.map((cls) => {
+      const course = getCourseInfo(cls.courseCode);
+      const timeStatus = getClassTimeState(cls.time, currentDayName);
+      const isRunning = timeStatus && timeStatus.state === 'now';
+      if (isRunning) liveNowCount++;
+
+      return `
+        <div class="today-class-item ${isRunning ? 'is-live-now' : ''}">
+          <div class="today-item-header">
+            <div class="today-item-left">
+              <span class="today-course-code">${cls.courseCode}</span>
+              ${isRunning ? `
+                <span class="today-live-pill">
+                  <span class="badge-beacon"><span class="beacon-wave"></span><span class="beacon-core"></span></span>
+                  <span>LIVE NOW</span>
+                </span>
+              ` : ''}
+            </div>
+            <div class="today-item-time">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span>${cls.time}</span>
+            </div>
+          </div>
+
+          ${course.title && course.title !== "Course Title Not Specified" ? `
+            <div class="today-course-title">${course.title}</div>
+          ` : ''}
+
+          <div class="today-item-footer">
+            <div class="today-room-pill">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span>Room ${cls.room}</span>
+            </div>
+            <span class="today-teacher-static-badge" title="Teacher Initial: ${cls.teacher}">${cls.teacher}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="today-summary-bar">
+        <span class="today-count-text"><strong>${classesToday.length}</strong> class${classesToday.length > 1 ? 'es' : ''} scheduled for <strong>${targetBatch}</strong></span>
+        ${liveNowCount > 0 ? `<span class="today-running-tag">● ${liveNowCount} Live Now</span>` : `<span class="today-day-tag">${currentDayName}</span>`}
+      </div>
+      <div class="today-items-list">
+        ${cardsHtml}
+      </div>
+    `;
+  }
+
+  if (viewFullBtn) {
+    viewFullBtn.innerHTML = `<span>View Full Week Table &rarr;</span>`;
+    viewFullBtn.onclick = () => {
+      closeTodayClassesModal();
+      switchBatch(targetBatch);
+      elements.routineDisplayArea?.scrollIntoView({ behavior: "smooth" });
+    };
+  }
+
+  if (footerActionBtn) {
+    footerActionBtn.textContent = "Done";
+    footerActionBtn.onclick = () => closeTodayClassesModal();
+  }
+
+  overlay.classList.add("active");
+}
+
+function closeTodayClassesModal() {
+  const overlay = document.getElementById("todayModalOverlay");
+  if (overlay) {
+    overlay.classList.remove("active");
+    overlay.classList.remove("is-welcome-mode");
+  }
+}
+
 if (typeof window !== "undefined") {
   window.openFacultyModal = openFacultyModal;
   window.closeFacultyModal = closeFacultyModal;
+  window.openTodayClassesModal = openTodayClassesModal;
+  window.closeTodayClassesModal = closeTodayClassesModal;
 }
 
 /**
@@ -1144,25 +1431,25 @@ function renderBatchRoutine() {
     }
   });
 
-  // Toggle Bar (Table vs Cards + All Days vs Today)
-  const isCardsMode = state.displayMode === "cards";
+  // View Mode: Mobile strictly Card View, PC/Large Screens strictly Table View
+  const isMobileScreen = typeof window !== "undefined" && window.innerWidth <= 768;
+  const isCardsMode = isMobileScreen;
   const viewToggleBarHtml = `
     <div class="routine-view-toggle-bar no-print">
-      <div class="view-toggle-pill-group">
-        <button class="view-toggle-btn ${!isCardsMode ? 'active' : ''}" onclick="toggleDisplayMode('table')" title="Table View">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="18" height="18" x="3" y="3" rx="2.5"/>
-            <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
-          </svg>
-          <span>Table</span>
-        </button>
-        <button class="view-toggle-btn ${isCardsMode ? 'active' : ''}" onclick="toggleDisplayMode('cards')" title="Cards View">
+      <div class="routine-view-indicator-pill">
+        ${isMobileScreen ? `
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect width="14" height="20" x="5" y="2" rx="3"/>
             <path d="M12 18h.01"/>
           </svg>
-          <span>Cards</span>
-        </button>
+          <span>Cards View</span>
+        ` : `
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2.5"/>
+            <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+          </svg>
+          <span>Table View</span>
+        `}
       </div>
 
       <div class="day-filter-pill-group">
@@ -1211,20 +1498,30 @@ function renderBatchRoutine() {
       const isToday = day.toLowerCase() === currentDayName.toLowerCase();
 
       if (classes.length === 0) {
+        const chillMessages = [
+          { emoji: "🏖️", title: "Chill Day, No Classes!", sub: "Take it easy — you deserve a break 😎" },
+          { emoji: "🎮", title: "Free Day — No Lectures!", sub: "Game on, stress off! 🕹️" },
+          { emoji: "☕", title: "Offday Vibes Only!", sub: "Grab a coffee & relax, no porasuna today ✌️" },
+          { emoji: "🎵", title: "No Class, Just Vibes!", sub: "Put on your playlist & chill out 🎧" },
+          { emoji: "😴", title: "Rest Day Activated!", sub: "Sleep in, you earned it today 💤" },
+        ];
+        const chill = chillMessages[Math.floor(Math.random() * chillMessages.length)];
         cardsHtml += `
-          <div class="mobile-day-card offday-card ${isToday ? 'is-today-card' : ''}">
+          <div class="mobile-day-card card-day-${daySlug} offday-card ${isToday ? 'is-today-card' : ''}">
             <div class="mobile-day-header day-${daySlug}">
               <span class="day-name">${day} ${isToday ? '<span class="today-tag-card-modern"><span class="today-spark-dot"></span><span>TODAY</span></span>' : ''}</span>
-              <span class="offday-badge">Offday</span>
+              <span class="offday-badge">🌴 Offday</span>
             </div>
             <div class="mobile-offday-body">
-              <span>🌴 No Classes Scheduled (Offday)</span>
+              <span class="offday-chill-emoji">${chill.emoji}</span>
+              <span class="offday-chill-title">${chill.title}</span>
+              <span class="offday-chill-sub">${chill.sub}</span>
             </div>
           </div>
         `;
       } else {
         cardsHtml += `
-          <div class="mobile-day-card ${isToday ? 'is-today-card' : ''}">
+          <div class="mobile-day-card card-day-${daySlug} ${isToday ? 'is-today-card' : ''}">
             <div class="mobile-day-header day-${daySlug}">
               <span class="day-name">${day} ${isToday ? '<span class="today-tag-card-modern"><span class="today-spark-dot"></span><span>TODAY</span></span>' : ''}</span>
               <span class="day-count-badge">${classes.length} Class${classes.length > 1 ? 'es' : ''}</span>
@@ -1277,91 +1574,104 @@ function renderBatchRoutine() {
 
     scheduleBodyHtml = `<div class="mobile-cards-container">${cardsHtml}</div>`;
   } else {
-    // Exact Image 1 Table View
-    let tableRowsHtml = "";
-    let alternateCounter = 0;
+    // Modular Themed Table View (Each Day in its own bordered card matching Card View)
+    let dayCardsHtml = "";
 
-    activeDays.forEach(day => {
-      const classes = dayClasses[day];
+    targetDays.forEach(day => {
+      const classes = dayClasses[day] || [];
       const daySlug = day.toLowerCase();
       const isToday = day.toLowerCase() === currentDayName.toLowerCase();
 
-      classes.forEach((cls, idx) => {
-        alternateCounter++;
-        const fac = getFacultyInfo(cls.teacher, cls.courseCode);
-        const facName = fac ? fac.name : cls.teacher;
-        const course = getCourseInfo(cls.courseCode);
-        const timeStatus = getClassTimeState(cls.time, day);
-        let rowClass = (alternateCounter % 2 === 0) ? "row-fill-purple" : "row-fill-green";
-        if (isToday && timeStatus && timeStatus.state === 'now') {
-          rowClass = "row-running-class";
-        }
-
-        tableRowsHtml += `
-          <tr class="${rowClass}">
-            ${idx === 0 ? `
-              <td class="day-head-cell day-${daySlug} ${isToday ? 'is-today-day-cell' : ''}" rowspan="${classes.length}">
-                <div class="day-cell-inner">
-                  <span class="day-cell-name">${day}</span>
-                  ${isToday ? '<span class="today-tag-modern"><span class="today-spark-dot"></span><span>TODAY</span></span>' : ''}
-                </div>
-              </td>` : ""}
-            <td class="course-cell-code">
-              <div class="course-cell-wrapper">
-                <span class="course-code-main"><strong>${cls.courseCode}</strong></span>
-                ${course.title && course.title !== "Course Title Not Specified" ? `
-                  <span class="course-title-sub" title="${course.title}">${course.title}</span>
-                ` : ""}
-              </div>
-            </td>
-            <td class="time-cell-text">
-              <div>${cls.time}</div>
-              ${timeStatus ? `<div style="margin-top: 0.3rem;">${timeStatus.badge}</div>` : ''}
-            </td>
-            <td class="room-cell-text">${cls.room}</td>
-            <td>
-              <span class="teacher-initial-tag" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="Click to view faculty details for ${cls.teacher}" role="button" tabindex="0">${cls.teacher}</span>
-            </td>
-          </tr>
+      if (classes.length === 0) {
+        const chillMessages = [
+          { emoji: "🏖️", title: "Chill Day, No Classes!", sub: "Take it easy — you deserve a break 😎" },
+          { emoji: "🎮", title: "Free Day — No Lectures!", sub: "Game on, stress off! 🕹️" },
+          { emoji: "☕", title: "Offday Vibes Only!", sub: "Grab a coffee & relax, no porasuna today ✌️" },
+          { emoji: "🎵", title: "No Class, Just Vibes!", sub: "Put on your playlist & chill out 🎧" },
+          { emoji: "😴", title: "Rest Day Activated!", sub: "Sleep in, you earned it today 💤" },
+        ];
+        const chill = chillMessages[Math.floor(Math.random() * chillMessages.length)];
+        dayCardsHtml += `
+          <div class="day-table-card card-day-${daySlug} offday-card ${isToday ? 'is-today-card' : ''}">
+            <div class="mobile-day-header day-${daySlug}">
+              <span class="day-name">${day} ${isToday ? '<span class="today-tag-card-modern"><span class="today-spark-dot"></span><span>TODAY</span></span>' : ''}</span>
+              <span class="offday-badge">🌴 Offday</span>
+            </div>
+            <div class="mobile-offday-body">
+              <span class="offday-chill-emoji">${chill.emoji}</span>
+              <span class="offday-chill-title">${chill.title}</span>
+              <span class="offday-chill-sub">${chill.sub}</span>
+            </div>
+          </div>
         `;
-      });
+      } else {
+        let dayRowsHtml = "";
+        let alternateCounter = 0;
+
+        classes.forEach((cls) => {
+          alternateCounter++;
+          const fac = getFacultyInfo(cls.teacher, cls.courseCode);
+          const facName = fac ? fac.name : cls.teacher;
+          const course = getCourseInfo(cls.courseCode);
+          const timeStatus = getClassTimeState(cls.time, day);
+          let rowClass = (alternateCounter % 2 === 0) ? "row-fill-purple" : "row-fill-green";
+          if (isToday && timeStatus && timeStatus.state === 'now') {
+            rowClass = "row-running-class";
+          }
+
+          dayRowsHtml += `
+            <tr class="${rowClass}">
+              <td class="course-cell-code">
+                <div class="course-cell-wrapper">
+                  <span class="course-code-main"><strong>${cls.courseCode}</strong></span>
+                  ${course.title && course.title !== "Course Title Not Specified" ? `
+                    <span class="course-title-sub" title="${course.title}">${course.title}</span>
+                  ` : ""}
+                </div>
+              </td>
+              <td class="time-cell-text cell-center">
+                <div>${cls.time}</div>
+                ${timeStatus ? `<div style="margin-top: 0.3rem;">${timeStatus.badge}</div>` : ''}
+              </td>
+              <td class="cell-center">
+                <span class="room-cell-text">${cls.room}</span>
+              </td>
+              <td class="cell-center">
+                <span class="teacher-initial-tag" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="Click to view faculty details for ${cls.teacher}" role="button" tabindex="0">${cls.teacher}</span>
+              </td>
+            </tr>
+          `;
+        });
+
+        dayCardsHtml += `
+          <div class="day-table-card card-day-${daySlug} ${isToday ? 'is-today-card' : ''}">
+            <div class="mobile-day-header day-${daySlug}">
+              <span class="day-name">${day} ${isToday ? '<span class="today-tag-card-modern"><span class="today-spark-dot"></span><span>TODAY</span></span>' : ''}</span>
+              <span class="day-count-badge">${classes.length} Class${classes.length > 1 ? 'es' : ''}</span>
+            </div>
+            <div class="table-scroll-container">
+              <table class="routine-grid-table">
+                <thead>
+                  <tr>
+                    <th style="width: 32%; text-align: left;">Course</th>
+                    <th style="width: 28%; text-align: center;">Time</th>
+                    <th style="width: 20%; text-align: center;">Room No.</th>
+                    <th style="width: 20%; text-align: center;">Teacher Initial</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${dayRowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
     });
 
-    // Render Off Days (Stacked on left, merged "Offday" block on right, exactly matching Image 1!)
-    if (offDays.length > 0) {
-      offDays.forEach((day, idx) => {
-        const daySlug = day.toLowerCase();
-        const isToday = day.toLowerCase() === currentDayName.toLowerCase();
-        tableRowsHtml += `
-          <tr>
-            <td class="day-head-cell day-${daySlug} ${isToday ? 'is-today-day-cell' : ''}">
-              <div class="day-cell-inner">
-                <span class="day-cell-name">${day}</span>
-                  ${isToday ? '<span class="today-tag-modern"><span class="today-spark-dot"></span><span>TODAY</span></span>' : ''}
-              </div>
-            </td>
-            ${idx === 0 ? `<td class="offday-merged-block" colspan="4" rowspan="${offDays.length}">Offday</td>` : ""}
-          </tr>
-        `;
-      });
-    }
-
     scheduleBodyHtml = `
-      <div class="table-scroll-container" id="tableScrollContainer">
-        <table class="routine-grid-table">
-          <thead>
-            <tr>
-              <th>Day</th>
-              <th>Course</th>
-              <th>Time</th>
-              <th>Room no.</th>
-              <th>Teacher Initial</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${tableRowsHtml}
-          </tbody>
-        </table>
+      <div class="day-tables-container" id="tableScrollContainer">
+        ${dayCardsHtml}
       </div>
     `;
   }
@@ -1404,32 +1714,34 @@ function slideRoutineTable(direction) {
 window.slideRoutineTable = slideRoutineTable;
 
 function setupTableDrag() {
-  const container = document.getElementById("tableScrollContainer") || document.querySelector(".table-scroll-container");
-  if (!container || !container.dataset || container.dataset.dragAttached) return;
-  container.dataset.dragAttached = "true";
+  const containers = document.querySelectorAll(".table-scroll-container");
+  containers.forEach(container => {
+    if (!container || !container.dataset || container.dataset.dragAttached) return;
+    container.dataset.dragAttached = "true";
 
-  let isDown = false;
-  let startX = 0;
-  let scrollLeft = 0;
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
 
-  container.addEventListener("mousedown", (e) => {
-    isDown = true;
-    container.classList.add("dragging");
-    startX = e.pageX - container.offsetLeft;
-    scrollLeft = container.scrollLeft;
-  });
+    container.addEventListener("mousedown", (e) => {
+      isDown = true;
+      container.classList.add("dragging");
+      startX = e.pageX - container.offsetLeft;
+      scrollLeft = container.scrollLeft;
+    });
 
-  window.addEventListener("mouseup", () => {
-    isDown = false;
-    if (container) container.classList.remove("dragging");
-  });
+    window.addEventListener("mouseup", () => {
+      isDown = false;
+      container.classList.remove("dragging");
+    });
 
-  container.addEventListener("mousemove", (e) => {
-    if (!isDown) return;
-    e.preventDefault();
-    const x = e.pageX - container.offsetLeft;
-    const walk = (x - startX) * 1.5;
-    container.scrollLeft = scrollLeft - walk;
+    container.addEventListener("mousemove", (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - container.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      container.scrollLeft = scrollLeft - walk;
+    });
   });
 }
 
@@ -1794,200 +2106,363 @@ function renderRoomView() {
 }
 
 /**
- * EXPORT: High-Res PNG Image
- * Uses a completely flat table (NO rowspan/colspan) with 100% inline styles
- * so html2canvas renders it perfectly on all devices.
+/**
+ * EXPORT ENGINE: Pixel-Perfect 1-Page Canvas Generator
+ * Standardized on A4 Landscape proportions (1200px width),
+ * structured with complete course catalog & faculty directory,
+ * guaranteeing an exact, gorgeous 1-Page fit for both Image (PNG) and PDF.
+ */
+async function generateRoutineCanvas() {
+  if (!state.routine) return null;
+
+  if (typeof html2canvas === "undefined") {
+    throw new Error("html2canvas library is not loaded.");
+  }
+
+  const batch = state.selectedBatch || "L1T1";
+  const schedule = state.routine.batches[batch];
+  if (!schedule) return null;
+
+  const days = state.routine.days || ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+  const semester = state.routine.semester || "Academic Year 2026";
+
+  const termMap = {
+    "L1T1": "1st Year · 1st Term",
+    "L1T2": "1st Year · 2nd Term",
+    "L2T1": "2nd Year · 1st Term",
+    "L2T2": "2nd Year · 2nd Term",
+    "L3T1": "3rd Year · 1st Term",
+    "L3T2": "3rd Year · 2nd Term",
+    "L4T1": "4th Year · 1st Term",
+    "L4T2": "4th Year · 2nd Term",
+  };
+
+  const dayColors = {
+    Saturday:  { bg: "#ede9fe", text: "#4338ca" },
+    Sunday:    { bg: "#ecfdf5", text: "#065f46" },
+    Monday:    { bg: "#fff1f2", text: "#9f1239" },
+    Tuesday:   { bg: "#fdf4ff", text: "#86198f" },
+    Wednesday: { bg: "#fefce8", text: "#854d0e" },
+    Thursday:  { bg: "#f0fdfa", text: "#115e59" },
+  };
+
+  // Collect unique courses
+  const courseCodeSet = new Set();
+  days.forEach(day => {
+    (schedule[day] || []).forEach(item => {
+      if (item.courseCode) courseCodeSet.add(item.courseCode);
+    });
+  });
+  const courseList = Array.from(courseCodeSet).map(code => getCourseInfo(code));
+  courseList.sort((a, b) => a.code.localeCompare(b.code));
+  const totalCredits = courseList.reduce((sum, c) => sum + (c.credit || 0), 0);
+
+  // Group courseList into chunks of 3 for safe, non-overlapping HTML table rows in html2canvas
+  const courseChunks = [];
+  for (let i = 0; i < courseList.length; i += 3) {
+    courseChunks.push(courseList.slice(i, i + 3));
+  }
+
+  const courseRowsHtml = courseChunks.map(chunk => `
+    <tr>
+      ${chunk.map(c => `
+        <td style="width: 33.333%; padding: 2.5px 5px; vertical-align: top;">
+          <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 9px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 2px rgba(0,0,0,0.02); min-height: 28px; box-sizing: border-box;">
+            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 270px; font-size: 10.5px; line-height: 1.35;">
+              <span style="color: #0f172a; font-weight: 800;">${c.code}</span>
+              <span style="color: #475569; font-weight: 500; margin-left: 4px;">&ndash; ${c.title}</span>
+            </div>
+            <span style="background: #f1f5f9; color: #1e293b; font-weight: 800; font-size: 10px; padding: 2px 7px; border-radius: 4px; white-space: nowrap; margin-left: 8px; border: 1px solid #e2e8f0; flex-shrink: 0;">
+              ${c.credit} Cr
+            </span>
+          </div>
+        </td>
+      `).join("")}
+      ${chunk.length < 3 ? Array(3 - chunk.length).fill('<td style="width: 33.333%; padding: 2.5px 5px;"></td>').join("") : ""}
+    </tr>
+  `).join("");
+
+  // Collect faculty
+  const facultyMap = {};
+  days.forEach(day => {
+    (schedule[day] || []).forEach(item => {
+      if (item.teacher && !facultyMap[item.teacher]) {
+        const info = getFacultyInfo(item.teacher, item.courseCode);
+        facultyMap[item.teacher] = info && info.name ? info.name : item.teacher;
+      }
+    });
+  });
+
+  // Table rows
+  let rowsHtml = "";
+  days.forEach(day => {
+    const classes = schedule[day] || [];
+    const dc = dayColors[day] || { bg: "#f1f5f9", text: "#334155" };
+
+    if (classes.length === 0) {
+      rowsHtml += `
+        <tr style="border-bottom: 2px solid #cbd5e1; background: #fafaf9;">
+          <td style="padding: 6.5px 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; background: ${dc.bg}; color: ${dc.text}; text-align: center; border-right: 1.5px solid #cbd5e1; letter-spacing: 0.04em; vertical-align: middle;">
+            ${day}
+          </td>
+          <td colspan="4" style="padding: 6.5px 14px; font-size: 11px; color: #94a3b8; font-style: italic; text-align: center; vertical-align: middle;">
+            No Scheduled Classes &bull; Offday
+          </td>
+        </tr>
+      `;
+    } else {
+      classes.forEach((cls, idx) => {
+        const cInfo = getCourseInfo(cls.courseCode);
+        const facName = facultyMap[cls.teacher] || cls.teacher;
+        const rowBg = idx % 2 === 0 ? "#ffffff" : "#fcfcfb";
+        const isLastInDay = idx === classes.length - 1;
+        const borderBottom = isLastInDay ? "2px solid #cbd5e1" : "1px solid #f1f5f9";
+
+        rowsHtml += `
+          <tr style="border-bottom: ${borderBottom}; background: ${rowBg};">
+            <td style="padding: 6.5px 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; background: ${dc.bg}; color: ${dc.text}; text-align: center; border-right: 1.5px solid #cbd5e1; letter-spacing: 0.04em; vertical-align: middle;">
+              ${day}
+            </td>
+            <td style="padding: 6.5px 14px; font-size: 11.5px; font-weight: 700; color: #1e293b; border-right: 1px solid #eef2f6; white-space: nowrap; vertical-align: middle;">
+              ${cls.time}
+            </td>
+            <td style="padding: 6.5px 14px; border-right: 1px solid #eef2f6; vertical-align: middle;">
+              <div style="font-size: 12px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                <span>${cls.courseCode}</span>
+                ${cls.type ? `<span style="font-size: 9.5px; font-weight: 700; padding: 1.5px 6px; border-radius: 4px; background: ${cls.type === 'Lab' ? '#fee2e2; color:#991b1b; border: 1px solid #fca5a5;' : '#e0f2fe; color:#0369a1; border: 1px solid #bae6fd;'}">${cls.type}</span>` : ''}
+              </div>
+              ${cInfo.title && cInfo.title !== "Course Title Not Specified" ? `
+                <div style="font-size: 10.5px; font-weight: 500; color: #475569; margin-top: 2px; line-height: 1.3;">${cInfo.title}</div>
+              ` : ''}
+            </td>
+            <td style="padding: 6.5px 14px; border-right: 1px solid #eef2f6; white-space: nowrap; vertical-align: middle;">
+              <span style="display: inline-block; background: #f1f5f9; color: #1e293b; font-weight: 700; font-size: 10.5px; padding: 2.5px 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                Room ${cls.room}
+              </span>
+            </td>
+            <td style="padding: 6.5px 14px; white-space: nowrap; vertical-align: middle;">
+              <div style="display: flex; align-items: center; gap: 7px;">
+                <span style="display: inline-block; background: #191c19; color: #d6f83b; font-weight: 800; font-size: 10px; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.03em;">
+                  ${cls.teacher}
+                </span>
+                <span style="font-size: 11px; font-weight: 600; color: #334155;">
+                  ${facName}
+                </span>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+    }
+  });
+
+  const now = new Date();
+  const dateStr = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(now);
+
+  const cardHtml = `
+    <div id="exportRoutineCard" style="width: 1200px; box-sizing: border-box; background: #ffffff; padding: 22px 28px 18px; font-family: 'Google Sans', 'Google Sans Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; border: 1.5px solid #cbd5e1; border-radius: 14px; position: relative;">
+      
+      <!-- Top Accent Bar -->
+      <div style="position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, #191c19 0%, #d6f83b 50%, #191c19 100%); border-top-left-radius: 12px; border-top-right-radius: 12px;"></div>
+
+      <!-- Header Section -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 44px; height: 44px; border-radius: 10px; background: #191c19; display: flex; align-items: center; justify-content: center; color: #d6f83b; font-weight: 900; font-size: 18px; letter-spacing: 0.05em; box-shadow: 0 4px 10px rgba(0,0,0,0.12);">
+            ICE
+          </div>
+          <div>
+            <div style="font-size: 17px; font-weight: 900; color: #0f172a; letter-spacing: -0.01em;">Daffodil International University</div>
+            <div style="font-size: 12.5px; font-weight: 700; color: #0284c7; margin-top: 1px;">Department of Information &amp; Communication Engineering</div>
+            <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-top: 2px;">Class Routine &bull; ${semester}</div>
+          </div>
+        </div>
+
+        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em;">Target Batch</span>
+            <span style="display: inline-block; background: #d6f83b; color: #141712; font-size: 19px; font-weight: 900; padding: 4px 16px; border-radius: 8px; border: 1.5px solid rgba(20,23,18,0.18); letter-spacing: 0.04em; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+              ${batch}
+            </span>
+          </div>
+          <div style="font-size: 10.5px; font-weight: 700; color: #475569; letter-spacing: 0.04em;">
+            ${termMap[batch] || "DIU ICE"} &bull; Weekly Timetable
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Schedule Master Table -->
+      <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #cbd5e1; border-radius: 8px; overflow: hidden; margin-bottom: 12px; table-layout: fixed;">
+        <thead>
+          <tr style="background: #191c19; color: #ffffff;">
+            <th style="width: 110px; padding: 8px 12px; font-size: 11px; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 0.06em;">Day</th>
+            <th style="width: 170px; padding: 8px 14px; font-size: 11px; font-weight: 800; text-align: left; text-transform: uppercase; letter-spacing: 0.06em;">Time Slot</th>
+            <th style="width: 440px; padding: 8px 14px; font-size: 11px; font-weight: 800; text-align: left; text-transform: uppercase; letter-spacing: 0.06em;">Course Code &amp; Title</th>
+            <th style="width: 130px; padding: 8px 14px; font-size: 11px; font-weight: 800; text-align: left; text-transform: uppercase; letter-spacing: 0.06em;">Room</th>
+            <th style="width: 290px; padding: 8px 14px; font-size: 11px; font-weight: 800; text-align: left; text-transform: uppercase; letter-spacing: 0.06em;">Faculty</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+
+      <!-- Enrolled Courses & Directory Summary Card (100% html2canvas Compatible Table) -->
+      <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0;">
+          <span style="font-size: 10.5px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.06em;">
+            Enrolled Course Summary &bull; Batch ${batch}
+          </span>
+          <span style="font-size: 10px; font-weight: 700; color: #0f172a; background: #ffffff; padding: 1.5px 8px; border-radius: 10px; border: 1px solid #cbd5e1;">
+            ${courseList.length} Courses &bull; ${totalCredits} Total Credits
+          </span>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0;">
+          <tbody>
+            ${courseRowsHtml}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Professional Footer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9.5px; color: #64748b; padding-top: 6px; border-top: 1px solid #eef2f6;">
+        <div>
+          <span>&bull; Official Routine &bull; <strong>Department of ICE</strong> &bull; DIU Smart Routine Engine</span>
+        </div>
+        <div style="text-align: center;">
+          <span>Theory: 1h 30m | Laboratory: 3h&ndash;4h Session</span>
+        </div>
+        <div style="text-align: right;">
+          <span>Generated: <strong>${dateStr}</strong> &bull; <strong>Page 1 of 1</strong></span>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  const offscreen = document.createElement("div");
+  offscreen.style.cssText = "position: fixed; left: -99999px; top: 0; width: 1200px; z-index: -9999; pointer-events: none;";
+  offscreen.innerHTML = cardHtml;
+  document.body.appendChild(offscreen);
+
+  try {
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+  } catch (e) {}
+
+  await new Promise(r => setTimeout(r, 350));
+
+  const targetEl = document.getElementById("exportRoutineCard") || offscreen;
+
+  const canvas = await html2canvas(targetEl, {
+    scale: 2,
+    backgroundColor: "#ffffff",
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+    width: 1200,
+    height: targetEl.scrollHeight,
+    windowWidth: 1200,
+    windowHeight: targetEl.scrollHeight,
+  });
+
+  document.body.removeChild(offscreen);
+  return canvas;
+}
+
+/**
+ * EXPORT: High-Res 1-Page PNG Image
  */
 async function downloadAsImage() {
   if (!state.routine) {
-    showToast("No routine", "error");
+    showToast("No routine loaded to export", "error");
     return;
   }
 
+  showToast("Generating 1-Page Image...", "info");
+
   try {
-    if (typeof html2canvas === "undefined") {
-      throw new Error("html2canvas library is loading or blocked.");
-    }
+    const canvas = await generateRoutineCanvas();
+    if (!canvas) throw new Error("Failed to generate routine canvas");
 
-    const batch = state.selectedBatch;
-    const schedule = state.routine.batches[batch];
-    if (!schedule) {
-      showToast("No schedule", "error");
-      return;
-    }
-
-    const days = state.routine.days;
-    const semester = state.routine.semester || "Fall-2026";
-
-    // --- Day color palette (matching the app's day colors) ---
-    const dayColors = {
-      Saturday:  { bg: "#c3b9d6", text: "#26193d" },
-      Sunday:    { bg: "#c7dcb8", text: "#1d3610" },
-      Monday:    { bg: "#f7d2b5", text: "#5c2a00" },
-      Tuesday:   { bg: "#b5cfdc", text: "#0a2a3d" },
-      Wednesday: { bg: "#dcc5b5", text: "#3d1f00" },
-      Thursday:  { bg: "#b5dcc5", text: "#0a3d1f" },
-    };
-
-    // --- Collect unique courses ---
-    const courseCodeSet = new Set();
-    days.forEach(day => {
-      (schedule[day] || []).forEach(item => {
-        if (item.courseCode) courseCodeSet.add(item.courseCode);
-      });
-    });
-    const courseList = Array.from(courseCodeSet).map(code => getCourseInfo(code));
-    courseList.sort((a, b) => a.code.localeCompare(b.code));
-    const totalCredits = courseList.reduce((sum, c) => sum + (c.credit || 0), 0);
-
-    // --- Base styles (all inline) ---
-    const S = {
-      card:     "font-family:'Lexend',Arial,sans-serif;background:#fff;padding:28px 32px;border-radius:12px;color:#0f172a;",
-      header:   "display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #e2e8f0;",
-      h2:       "font-size:18px;font-weight:800;color:#0f172a;margin:0 0 4px 0;",
-      subhead:  "font-size:12px;color:#64748b;margin:0;",
-      badgeBox: "text-align:right;",
-      batchB:   "display:inline-block;font-size:22px;font-weight:900;color:#0284c7;border:2px solid #0284c7;border-radius:8px;padding:6px 18px;letter-spacing:1px;",
-      termB:    "display:block;font-size:10px;font-weight:700;color:#64748b;letter-spacing:2px;text-transform:uppercase;margin-top:4px;",
-
-      courseWrap: "margin-bottom:18px;",
-      courseHead: "display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;",
-      coursePill: "background:#e0f2fe;color:#0284c7;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;",
-      ol:         "margin:0;padding-left:20px;",
-      li:         "font-size:12px;color:#334155;margin-bottom:4px;display:flex;justify-content:space-between;",
-      crBadge:    "color:#0284c7;font-weight:700;font-size:11px;",
-
-      table:   "width:100%;border-collapse:collapse;border:1.5px solid #94a3b8;",
-      th:      "background:#1e40af;color:#fff;font-size:12px;font-weight:700;padding:10px 12px;text-align:left;border:1px solid #1d4ed8;letter-spacing:0.5px;",
-      tdBase:  "font-size:12px;padding:9px 12px;border:1px solid #e2e8f0;vertical-align:middle;",
-      dayTd:   "font-size:12px;font-weight:700;padding:9px 12px;border:1px solid rgba(0,0,0,0.08);vertical-align:middle;text-align:center;",
-      codeTd:  "font-size:12px;font-weight:700;color:#0284c7;padding:9px 12px;border:1px solid #e2e8f0;vertical-align:middle;",
-      offTd:   "font-size:12px;color:#94a3b8;padding:9px 12px;border:1px solid #e2e8f0;vertical-align:middle;text-align:center;font-style:italic;",
-      footer:  "display:flex;justify-content:space-between;margin-top:14px;font-size:10.5px;color:#64748b;padding-top:10px;border-top:1px solid #e2e8f0;",
-    };
-
-    // --- Row bg alternation ---
-    const rowBgs = ["#f0f7ff", "#f5f3ff"];
-    let rowIdx = 0;
-
-    // --- Build course list HTML ---
-    const courseHtml = `
-      <div style="${S.courseWrap}">
-        <div style="${S.courseHead}">
-          <span>Course details:</span>
-          <span style="${S.coursePill}">${courseList.length} Courses &bull; ${totalCredits} Credit Hours</span>
-        </div>
-        <ol style="${S.ol}">
-          ${courseList.map(c => `
-            <li style="${S.li}">
-              <span><strong style="color:#0284c7">${c.code}</strong> &ndash; ${c.title}</span>
-              <span style="${S.crBadge}">${c.credit} Cr</span>
-            </li>
-          `).join("")}
-        </ol>
-      </div>`;
-
-    // --- Build flat table rows (NO rowspan, NO colspan) ---
-    let rowsHtml = "";
-
-    days.forEach(day => {
-      const classes = schedule[day] || [];
-      const dc = dayColors[day] || { bg: "#e2e8f0", text: "#0f172a" };
-
-      if (classes.length === 0) {
-        // Offday row
-        rowsHtml += `
-          <tr>
-            <td style="${S.dayTd}background:${dc.bg};color:${dc.text};">${day}</td>
-            <td colspan="4" style="${S.offTd}">Offday</td>
-          </tr>`;
-      } else {
-        classes.forEach((cls, idx) => {
-          const bg = rowBgs[rowIdx % 2];
-          rowIdx++;
-          const fac = getFacultyInfo(cls.teacher);
-          const facName = fac && fac.name ? fac.name : cls.teacher;
-          const cInfo = getCourseInfo(cls.courseCode);
-          rowsHtml += `
-            <tr>
-              <td style="${S.dayTd}background:${dc.bg};color:${dc.text};">${day}</td>
-              <td style="${S.codeTd}background:${bg};">
-                <div style="font-weight:800;color:#0284c7;">${cls.courseCode}</div>
-                ${cInfo.title && cInfo.title !== "Course Title Not Specified" ? `<div style="font-size:10.5px;font-weight:600;color:#475569;margin-top:2px;line-height:1.25;">${cInfo.title}</div>` : ""}
-              </td>
-              <td style="${S.tdBase}background:${bg};">${cls.time}</td>
-              <td style="${S.tdBase}background:${bg};">${cls.room}</td>
-              <td style="${S.tdBase}background:${bg};font-weight:600;">${cls.teacher}</td>
-            </tr>`;
-        });
-      }
-    });
-
-    // --- Full HTML ---
-    const fullHtml = `
-      <div style="${S.card}">
-        <div style="${S.header}">
-          <div>
-            <h2 style="${S.h2}">Department of Information and Communication Engineering</h2>
-            <p style="${S.subhead}">Daffodil International University &bull; Class Routine (${semester})</p>
-          </div>
-          <div style="${S.badgeBox}">
-            <span style="${S.batchB}">${batch}</span>
-            <span style="${S.termB}">Weekly Schedule</span>
-          </div>
-        </div>
-        ${courseHtml}
-        <table style="${S.table}">
-          <thead>
-            <tr>
-              <th style="${S.th}">Day</th>
-              <th style="${S.th}">Course</th>
-              <th style="${S.th}">Time</th>
-              <th style="${S.th}">Room No.</th>
-              <th style="${S.th}">Teacher</th>
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-        <div style="${S.footer}">
-          <span>Routine for <strong>${batch}</strong> &bull; DIU Smart Routine Engine</span>
-          <span>Standard Theory: 1h 30m | Laboratory: 3h&ndash;4h Session</span>
-        </div>
-      </div>`;
-
-    // --- Off-screen container ---
-    const offscreen = document.createElement("div");
-    offscreen.style.cssText = "position:fixed;top:-99999px;left:-99999px;width:860px;z-index:-9999;";
-    offscreen.innerHTML = fullHtml;
-    document.body.appendChild(offscreen);
-
-    // Let layout settle
-    await new Promise(r => setTimeout(r, 400));
-
-    const canvas = await html2canvas(offscreen, {
-      scale: 2.5,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      width: 860,
-      height: offscreen.scrollHeight,
-      windowWidth: 860,
-      windowHeight: offscreen.scrollHeight
-    });
-
-    document.body.removeChild(offscreen);
-
+    const batch = state.selectedBatch || "Routine";
     const link = document.createElement("a");
     link.download = `DIU_ICE_${batch}_Routine.png`;
     link.href = canvas.toDataURL("image/png");
+    document.body.appendChild(link);
     link.click();
-    showToast("Saved!", "success");
+    document.body.removeChild(link);
+
+    showToast("Image downloaded successfully (1 Page)!", "success");
   } catch (err) {
-    console.error(err);
-    showToast("Failed", "error");
+    console.error("Image Export error:", err);
+    showToast("Failed to download image", "error");
   }
 }
+
+/**
+ * EXPORT: Clean 1-Page A4 Landscape PDF
+ */
+async function downloadAsPDF() {
+  if (!state.routine) {
+    showToast("No routine loaded to export", "error");
+    return;
+  }
+
+  showToast("Preparing 1-Page PDF...", "info");
+
+  try {
+    const canvas = await generateRoutineCanvas();
+    if (!canvas) throw new Error("Failed to generate routine canvas");
+
+    const batch = state.selectedBatch || "Routine";
+
+    // Check jsPDF library
+    const JsPDFClass = (typeof window.jspdf !== "undefined" && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
+
+    if (!JsPDFClass) {
+      window.print();
+      return;
+    }
+
+    const pdf = new JsPDFClass({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4"
+    });
+
+    const pageWidth = 297;
+    const pageHeight = 210;
+    const margin = 8;
+    const printWidth = pageWidth - (margin * 2); // 281mm
+    const printHeight = pageHeight - (margin * 2); // 194mm
+
+    // Scale canvas to fit exactly on 1 page without distortion
+    const canvasRatio = canvas.width / canvas.height;
+    let finalW = printWidth;
+    let finalH = finalW / canvasRatio;
+
+    if (finalH > printHeight) {
+      finalH = printHeight;
+      finalW = finalH * canvasRatio;
+    }
+
+    const posX = margin + (printWidth - finalW) / 2;
+    const posY = margin + (printHeight - finalH) / 2;
+
+    const imgData = canvas.toDataURL("image/png", 1.0);
+    pdf.addImage(imgData, "PNG", posX, posY, finalW, finalH, undefined, "FAST");
+    pdf.save(`DIU_ICE_${batch}_Routine.pdf`);
+
+    showToast("PDF downloaded successfully (1 Page)!", "success");
+  } catch (err) {
+    console.error("PDF Export error:", err);
+    window.print();
+  }
+}
+window.downloadAsImage = downloadAsImage;
+window.downloadAsPDF = downloadAsPDF;
 
 
 
@@ -2268,33 +2743,7 @@ function setupEventListeners() {
     });
   });
 
-  elements.btnPrint?.addEventListener("click", () => window.print());
-  elements.btnDownloadImage?.addEventListener("click", downloadAsImage);
-  elements.btnCopyText?.addEventListener("click", copyRoutineAsText);
 
-  // Glowing Download Routine Dropdown Controller
-  const downloadWrapper = elements.downloadDropdownWrapper;
-  const downloadBtn = elements.btnDownloadRoutine;
-
-  downloadBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const isOpen = downloadWrapper?.classList.toggle("is-open");
-    downloadBtn.setAttribute("aria-expanded", String(Boolean(isOpen)));
-  });
-
-  document.addEventListener("click", (e) => {
-    if (downloadWrapper && !downloadWrapper.contains(e.target)) {
-      downloadWrapper.classList.remove("is-open");
-      downloadBtn?.setAttribute("aria-expanded", "false");
-    }
-  });
-
-  document.querySelectorAll(".download-menu-item").forEach(item => {
-    item.addEventListener("click", () => {
-      downloadWrapper?.classList.remove("is-open");
-      downloadBtn?.setAttribute("aria-expanded", "false");
-    });
-  });
 
   let searchDebounceTimer = null;
   elements.searchInput?.addEventListener("input", (e) => {
@@ -2310,13 +2759,80 @@ function setupEventListeners() {
 
   elements.searchClearBtn?.addEventListener("click", clearSearchFilter);
 
-  // Batch chips horizontal scroll wheel
-  elements.batchChipsContainer?.addEventListener("wheel", (e) => {
-    if (e.deltaY !== 0) {
-      e.preventDefault();
-      elements.batchChipsContainer.scrollLeft += e.deltaY;
+  // ── Batch Chips: GPU-smooth Transform Ticker ─────────────────────────────
+  const chipsEl = elements.batchChipsContainer;
+  if (chipsEl) {
+    let tickerRAF    = null;
+    let tickerPaused = false;
+    let pos          = 0;          // float position in px
+    const SPEED      = 0.22;       // px per frame — very slow & silky
+
+    function getTrack() {
+      return chipsEl.querySelector(".batch-chips-track");
     }
-  }, { passive: false });
+
+    function runTicker() {
+      const track = getTrack();
+      if (track && !tickerPaused) {
+        const maxScroll = track.scrollWidth - chipsEl.clientWidth;
+        if (maxScroll > 0) {
+          pos += SPEED;
+          if (pos >= maxScroll) pos = 0;   // seamless loop
+          track.style.transform = `translateX(${-pos}px)`;
+        }
+      }
+      tickerRAF = requestAnimationFrame(runTicker);
+    }
+    tickerRAF = requestAnimationFrame(runTicker);
+
+    // Pause on hover (desktop) — resume on leave
+    chipsEl.addEventListener("mouseenter", () => { tickerPaused = true; });
+    chipsEl.addEventListener("mouseleave", () => { tickerPaused = false; });
+
+    // Touch: pause on touch, resume after finger up with delay
+    chipsEl.addEventListener("touchstart", () => { tickerPaused = true; }, { passive: true });
+    chipsEl.addEventListener("touchend", () => {
+      setTimeout(() => { tickerPaused = false; }, 1500);
+    }, { passive: true });
+
+    // Mouse drag scroll — temporarily shift pos
+    let isDragging = false, dragStartX = 0, dragStartPos = 0;
+    chipsEl.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      tickerPaused = true;
+      dragStartX   = e.clientX;
+      dragStartPos = pos;
+      chipsEl.style.cursor = "grabbing";
+    });
+    window.addEventListener("mouseup", () => {
+      if (!isDragging) return;
+      isDragging = false;
+      chipsEl.style.cursor = "grab";
+      setTimeout(() => { tickerPaused = false; }, 1500);
+    });
+    chipsEl.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const track = getTrack();
+      if (!track) return;
+      const delta = dragStartX - e.clientX;
+      const maxScroll = track.scrollWidth - chipsEl.clientWidth;
+      pos = Math.max(0, Math.min(maxScroll, dragStartPos + delta));
+      track.style.transform = `translateX(${-pos}px)`;
+    });
+
+    // Mouse wheel horizontal scroll
+    chipsEl.addEventListener("wheel", (e) => {
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      const track = getTrack();
+      if (!track) return;
+      const maxScroll = track.scrollWidth - chipsEl.clientWidth;
+      pos = Math.max(0, Math.min(maxScroll, pos + e.deltaY * 0.5));
+      track.style.transform = `translateX(${-pos}px)`;
+    }, { passive: false });
+  }
+
 
   elements.modalCloseBtn?.addEventListener("click", closeFacultyModal);
   elements.facultyModalOverlay?.addEventListener("click", (e) => {
@@ -2333,15 +2849,58 @@ function setupEventListeners() {
     }
   });
 
+  // Header Date Badge Listener (Scrolls to routine and filters today directly without popup)
+  document.getElementById("headerDateBadge")?.addEventListener("click", () => {
+    setDayFilter("today");
+    if (state.activeView !== "batch") {
+      state.activeView = "batch";
+      updateViewTabs();
+      renderCurrentView();
+    }
+    elements.routineDisplayArea?.scrollIntoView({ behavior: "smooth" });
+  });
+  document.getElementById("todayModalCloseBtn")?.addEventListener("click", closeTodayClassesModal);
+  document.getElementById("btnTodayCloseAction")?.addEventListener("click", closeTodayClassesModal);
+  document.getElementById("btnTodayViewFullRoutine")?.addEventListener("click", () => {
+    closeTodayClassesModal();
+    setDayFilter("today");
+    if (state.activeView !== "batch") {
+      state.activeView = "batch";
+      updateViewTabs();
+      renderCurrentView();
+    }
+    elements.routineDisplayArea?.scrollIntoView({ behavior: "smooth" });
+  });
+  document.getElementById("todayModalOverlay")?.addEventListener("click", (e) => {
+    if (e.target.id === "todayModalOverlay") closeTodayClassesModal();
+  });
+
   // Global Keyboard Shortcuts
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeFacultyModal();
+      closeTodayClassesModal();
       if (state.searchQuery) clearSearchFilter();
     } else if (e.key === "/" && elements.searchInput && document.activeElement !== elements.searchInput && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
       e.preventDefault();
       elements.searchInput.focus();
     }
+  });
+
+  // Dynamic Screen Resize Listener for Mobile vs PC View Switch
+  let resizeDebounceTimer = null;
+  let lastWasMobile = typeof window !== "undefined" ? window.innerWidth <= 768 : false;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeDebounceTimer);
+    resizeDebounceTimer = setTimeout(() => {
+      const currentIsMobile = window.innerWidth <= 768;
+      if (currentIsMobile !== lastWasMobile) {
+        lastWasMobile = currentIsMobile;
+        if (state.activeView === "batch") {
+          renderBatchRoutine();
+        }
+      }
+    }, 120);
   });
 
   // Periodically refresh live date, routine updates (3-day expiry), and class status
@@ -2376,11 +2935,32 @@ function initRealtimeVisitorTracker() {
   }
 }
 
+/**
+ * Live Date in Navbar Header
+ */
+function updateLiveDateBadge() {
+  const dateEl = document.getElementById("headerDateText");
+  if (!dateEl) return;
+  const now = new Date();
+  const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(now);
+  const formattedDate = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(now);
+  dateEl.textContent = `${dayName}, ${formattedDate}`;
+}
+window.updateLiveDateBadge = updateLiveDateBadge;
+
+function updateDigitalClock() {
+  updateLiveDateBadge();
+}
+window.updateDigitalClock = updateDigitalClock;
+
 // Boot on Load
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme(state.theme);
   initSheetInput();
   setupEventListeners();
+  updateLiveDateBadge();
   loadInitialData();
   initRealtimeVisitorTracker();
+  updateDigitalClock();
+  setInterval(updateDigitalClock, 1000);
 });
