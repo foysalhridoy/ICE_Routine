@@ -1500,10 +1500,12 @@ function renderBatchRoutine() {
     <div class="routine-view-toggle-bar no-print">
       <div class="day-filter-pill-group">
         <button class="view-toggle-btn ${!isTodayOnly ? 'active' : ''}" onclick="setDayFilter('all')" title="Show all week classes">
-          <span>📅 All Days</span>
+          <span class="btn-emoji all-days-emoji">🗓️</span>
+          <span class="btn-text">All Days</span>
         </button>
         <button class="view-toggle-btn ${isTodayOnly ? 'active' : ''}" onclick="setDayFilter('today')" title="Show only today's classes">
-          <span>⚡ Today</span>
+          <span class="btn-emoji today-emoji">⚡</span>
+          <span class="btn-text">Today</span>
         </button>
       </div>
     </div>
