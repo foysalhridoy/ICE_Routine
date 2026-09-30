@@ -31,6 +31,7 @@ if (typeof window !== "undefined") {
 function switchBatch(batch) {
   state.selectedBatch = batch;
   state.activeView = "batch";
+  state.dayFilter = "today"; // Default to today's classes on batch select
   updateViewTabs();
   document.querySelectorAll(".batch-chip").forEach(c => {
     c.classList.toggle("active", c.textContent.trim() === batch);
@@ -843,6 +844,7 @@ function onDataLoaded(statusMsg) {
   if (!state.routine.batches[state.selectedBatch]) {
     state.selectedBatch = state.routine.allBatchesList[0] || "L1T1";
   }
+  state.dayFilter = "today"; // Show today's classes first by default
   renderStats();
   renderCurrentView();
 }
@@ -868,21 +870,27 @@ function renderBatchChips() {
   if (!elements.batchChipsContainer || !state.routine) return;
   elements.batchChipsContainer.innerHTML = "";
 
-  // Inner track div — this is what we translateX for smooth ticker
+  const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
+
+  // Inner track div — for mobile: smooth native scroll track, for desktop: flex grid
   const track = document.createElement("div");
-  track.className = "batch-chips-track";
+  track.className = isMobile ? "batch-chips-track batch-chips-mobile" : "batch-chips-track batch-chips-desktop";
   track.id = "batchChipsTrack";
 
   state.routine.allBatchesList.forEach(batch => {
     const chip = document.createElement("button");
     chip.className = `batch-chip ${batch === state.selectedBatch ? "active" : ""}`;
     chip.textContent = batch;
-    chip.onclick = () => { switchBatch(batch); };
+    chip.onclick = () => {
+      switchBatch(batch);
+      if (isMobile) {
+        chip.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
+    };
     track.appendChild(chip);
   });
 
   elements.batchChipsContainer.appendChild(track);
-  // Store track reference for ticker
   elements.batchChipsTrack = track;
 }
 
@@ -905,10 +913,12 @@ function renderStats() {
   let labCount = 0;
   let offdayCount = 0;
 
+  const offdays = [];
   state.routine.days.forEach(day => {
     const dayList = sched[day] || [];
     if (dayList.length === 0) {
       offdayCount++;
+      offdays.push(day);
     } else {
       dayList.forEach(c => {
         courses.add(c.courseCode);
@@ -921,53 +931,105 @@ function renderStats() {
 
   const courseList = Array.from(courses).map(c => getCourseInfo(c));
   const totalCredits = courseList.reduce((acc, c) => acc + (c.credit || 0), 0);
+  const theoryCount = courseList.length - labCount;
+  const activeDays = state.routine.days.length - offdayCount;
+  const avgPerDay = activeDays > 0 ? (totalClasses / activeDays).toFixed(1) : "0";
+  const offdayStr = offdays.length > 0 ? offdays.map(d => d.slice(0, 3)).join(", ") : "None";
 
   elements.statsBanner.innerHTML = `
     <div class="stat-box">
-      <div class="stat-icon blue">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <div class="stat-main">
+        <div class="stat-icon blue">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+        </div>
+        <div class="stat-data">
+          <div class="stat-value">${courseList.length}</div>
+          <div class="stat-label">Total Courses</div>
+        </div>
+      </div>
+      <div class="stat-extra">
+        <span class="stat-pill">${theoryCount} Theory</span>
+        <span class="stat-pill">${labCount} Lab</span>
+      </div>
+      <div class="stat-watermark" aria-hidden="true">
+        <svg width="74" height="74" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
         </svg>
       </div>
-      <div class="stat-data">
-        <div class="stat-value">${courseList.length}</div>
-        <div class="stat-label">Total Courses</div>
-      </div>
     </div>
+
     <div class="stat-box">
-      <div class="stat-icon green">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <div class="stat-main">
+        <div class="stat-icon green">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+        </div>
+        <div class="stat-data">
+          <div class="stat-value">${totalCredits} <span class="stat-unit">Cr</span></div>
+          <div class="stat-label">Credit Hours</div>
+        </div>
+      </div>
+      <div class="stat-extra">
+        <span class="stat-pill">${(totalCredits / (courseList.length || 1)).toFixed(1)} Cr/Sub</span>
+        <span class="stat-pill-sub">Full Term</span>
+      </div>
+      <div class="stat-watermark" aria-hidden="true">
+        <svg width="74" height="74" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
         </svg>
       </div>
-      <div class="stat-data">
-        <div class="stat-value">${totalCredits} <span class="stat-unit">Cr</span></div>
-        <div class="stat-label">Credit Hours</div>
-      </div>
     </div>
+
     <div class="stat-box">
-      <div class="stat-icon amber">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <div class="stat-main">
+        <div class="stat-icon amber">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="stat-data">
+          <div class="stat-value">${totalClasses}</div>
+          <div class="stat-label">Weekly Classes</div>
+        </div>
+      </div>
+      <div class="stat-extra">
+        <span class="stat-pill">~${avgPerDay}/day</span>
+        <span class="stat-pill-sub">${activeDays} Days Active</span>
+      </div>
+      <div class="stat-watermark" aria-hidden="true">
+        <svg width="74" height="74" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
         </svg>
       </div>
-      <div class="stat-data">
-        <div class="stat-value">${totalClasses}</div>
-        <div class="stat-label">Weekly Classes</div>
-      </div>
     </div>
+
     <div class="stat-box">
-      <div class="stat-icon purple">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>
-        </svg>
+      <div class="stat-main">
+        <div class="stat-icon purple">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01"/>
+          </svg>
+        </div>
+        <div class="stat-data">
+          <div class="stat-value">${offdayCount} <span class="stat-unit">${offdayCount === 1 ? "Day" : "Days"}</span></div>
+          <div class="stat-label">Weekly Offdays</div>
+        </div>
       </div>
-      <div class="stat-data">
-        <div class="stat-value">${offdayCount} <span class="stat-unit">Days</span></div>
-        <div class="stat-label">Weekly Offdays</div>
+      <div class="stat-extra">
+        <span class="stat-pill">${offdayStr}</span>
+        <span class="stat-pill-sub">${offdayCount > 0 ? "Weekend" : "Full Schedule"}</span>
+      </div>
+      <div class="stat-watermark" aria-hidden="true">
+        <svg width="74" height="74" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+        </svg>
       </div>
     </div>
   `;
+
 }
 
 function updateLiveDateBadge() {
@@ -1436,22 +1498,6 @@ function renderBatchRoutine() {
   const isCardsMode = isMobileScreen;
   const viewToggleBarHtml = `
     <div class="routine-view-toggle-bar no-print">
-      <div class="routine-view-indicator-pill">
-        ${isMobileScreen ? `
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="14" height="20" x="5" y="2" rx="3"/>
-            <path d="M12 18h.01"/>
-          </svg>
-          <span>Cards View</span>
-        ` : `
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="18" height="18" x="3" y="3" rx="2.5"/>
-            <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
-          </svg>
-          <span>Table View</span>
-        `}
-      </div>
-
       <div class="day-filter-pill-group">
         <button class="view-toggle-btn ${!isTodayOnly ? 'active' : ''}" onclick="setDayFilter('all')" title="Show all week classes">
           <span>📅 All Days</span>
@@ -2759,81 +2805,6 @@ function setupEventListeners() {
 
   elements.searchClearBtn?.addEventListener("click", clearSearchFilter);
 
-  // ── Batch Chips: GPU-smooth Transform Ticker ─────────────────────────────
-  const chipsEl = elements.batchChipsContainer;
-  if (chipsEl) {
-    let tickerRAF    = null;
-    let tickerPaused = false;
-    let pos          = 0;          // float position in px
-    const SPEED      = 0.22;       // px per frame — very slow & silky
-
-    function getTrack() {
-      return chipsEl.querySelector(".batch-chips-track");
-    }
-
-    function runTicker() {
-      const track = getTrack();
-      if (track && !tickerPaused) {
-        const maxScroll = track.scrollWidth - chipsEl.clientWidth;
-        if (maxScroll > 0) {
-          pos += SPEED;
-          if (pos >= maxScroll) pos = 0;   // seamless loop
-          track.style.transform = `translateX(${-pos}px)`;
-        }
-      }
-      tickerRAF = requestAnimationFrame(runTicker);
-    }
-    tickerRAF = requestAnimationFrame(runTicker);
-
-    // Pause on hover (desktop) — resume on leave
-    chipsEl.addEventListener("mouseenter", () => { tickerPaused = true; });
-    chipsEl.addEventListener("mouseleave", () => { tickerPaused = false; });
-
-    // Touch: pause on touch, resume after finger up with delay
-    chipsEl.addEventListener("touchstart", () => { tickerPaused = true; }, { passive: true });
-    chipsEl.addEventListener("touchend", () => {
-      setTimeout(() => { tickerPaused = false; }, 1500);
-    }, { passive: true });
-
-    // Mouse drag scroll — temporarily shift pos
-    let isDragging = false, dragStartX = 0, dragStartPos = 0;
-    chipsEl.addEventListener("mousedown", (e) => {
-      isDragging = true;
-      tickerPaused = true;
-      dragStartX   = e.clientX;
-      dragStartPos = pos;
-      chipsEl.style.cursor = "grabbing";
-    });
-    window.addEventListener("mouseup", () => {
-      if (!isDragging) return;
-      isDragging = false;
-      chipsEl.style.cursor = "grab";
-      setTimeout(() => { tickerPaused = false; }, 1500);
-    });
-    chipsEl.addEventListener("mousemove", (e) => {
-      if (!isDragging) return;
-      e.preventDefault();
-      const track = getTrack();
-      if (!track) return;
-      const delta = dragStartX - e.clientX;
-      const maxScroll = track.scrollWidth - chipsEl.clientWidth;
-      pos = Math.max(0, Math.min(maxScroll, dragStartPos + delta));
-      track.style.transform = `translateX(${-pos}px)`;
-    });
-
-    // Mouse wheel horizontal scroll
-    chipsEl.addEventListener("wheel", (e) => {
-      if (e.deltaY === 0) return;
-      e.preventDefault();
-      const track = getTrack();
-      if (!track) return;
-      const maxScroll = track.scrollWidth - chipsEl.clientWidth;
-      pos = Math.max(0, Math.min(maxScroll, pos + e.deltaY * 0.5));
-      track.style.transform = `translateX(${-pos}px)`;
-    }, { passive: false });
-  }
-
-
   elements.modalCloseBtn?.addEventListener("click", closeFacultyModal);
   elements.facultyModalOverlay?.addEventListener("click", (e) => {
     if (e.target === elements.facultyModalOverlay) closeFacultyModal();
@@ -2896,6 +2867,7 @@ function setupEventListeners() {
       const currentIsMobile = window.innerWidth <= 768;
       if (currentIsMobile !== lastWasMobile) {
         lastWasMobile = currentIsMobile;
+        renderBatchChips(); // Re-render chips for mobile ticker vs desktop grid
         if (state.activeView === "batch") {
           renderBatchRoutine();
         }

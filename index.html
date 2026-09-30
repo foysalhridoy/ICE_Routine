@@ -66,13 +66,24 @@
     <!-- 2. Batch Selector Section (Immediate focus for students) -->
     <section class="batch-selector-section no-print" id="batchSelectorSection" aria-label="Batch Selection">
       <div class="batch-bar-title">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M8 2v4M16 2v4"/>
-          <rect width="18" height="18" x="3" y="4" rx="3"/>
-          <path d="M3 10h18"/>
-          <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
-        </svg>
-        <span>Select Your Batch:</span>
+        <div class="batch-bar-title-left">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2v4M16 2v4"/>
+            <rect width="18" height="18" x="3" y="4" rx="3"/>
+            <path d="M3 10h18"/>
+            <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+          </svg>
+          <span>Select Your Batch:</span>
+        </div>
+        <div class="batch-swipe-hint" aria-hidden="true">
+          <span class="swipe-hint-text">Slide</span>
+          <span class="swipe-arrow-animated">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </span>
+          <span class="swipe-hand-animated">👈</span>
+        </div>
       </div>
       <div class="batch-chips-grid" id="batchChipsContainer">
         <!-- Chips injected by app.js -->
