@@ -3844,9 +3844,23 @@ img {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
   }
 
-  .stat-extra,
-  .stat-watermark {
+  .stat-extra {
     display: none !important;
+  }
+
+  .stat-watermark {
+    display: block !important;
+    position: absolute;
+    right: -6px;
+    bottom: -8px;
+    pointer-events: none;
+    z-index: 0;
+    transform: rotate(-10deg);
+  }
+
+  .stat-watermark svg {
+    width: 52px;
+    height: 52px;
   }
 
   .stat-icon {
@@ -4055,6 +4069,16 @@ img {
     padding: 0.5rem 0.65rem;
     border-radius: 12px;
     gap: 0.45rem;
+  }
+
+  .stat-watermark {
+    right: -4px;
+    bottom: -6px;
+  }
+
+  .stat-watermark svg {
+    width: 44px;
+    height: 44px;
   }
 
   .stat-icon {
