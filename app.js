@@ -181,18 +181,15 @@ function applyTheme() {
  */
 function toggleSheetDrawer() {
   const content = document.getElementById("sheetBarContent");
-  const arrow = document.getElementById("drawerArrow");
   const btn = document.getElementById("mobileSheetToggleBar");
   if (!content) return;
 
   const isExpanded = content.classList.contains("expanded");
   if (isExpanded) {
     content.classList.remove("expanded");
-    if (arrow) arrow.textContent = "▾";
     if (btn) btn.setAttribute("aria-expanded", "false");
   } else {
     content.classList.add("expanded");
-    if (arrow) arrow.textContent = "▴";
     if (btn) btn.setAttribute("aria-expanded", "true");
   }
 }
@@ -563,7 +560,7 @@ function renderNewsTicker(updates = []) {
     const singleNotice = `
       <div class="ticker-empty-item">
         <span class="ticker-spark-icon" aria-hidden="true">📢</span>
-        <span class="ticker-empty-text">রুটিনে কোনো নতুন আপডেট আসেনি, নতুন আপডেট আসলে জানিয়ে দেওয়া হবে</span>
+        <span class="ticker-empty-text">No new routine updates yet. You will be notified as soon as an update arrives.</span>
         <span class="ticker-diamond-sep" aria-hidden="true">✦</span>
       </div>
     `;
