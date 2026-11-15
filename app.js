@@ -95,8 +95,6 @@ function selectBatchAndGoToToday(batch) {
     }
   });
 
-  showToast(`Batch ${batch} selected! Opening your Today routine...`, "success");
-
   // Smooth redirection to Today Routine (index.html)
   setTimeout(() => {
     window.location.href = "index.html";
@@ -147,7 +145,6 @@ function switchBatch(batch) {
   updateViewTabs();
   renderStats();
   renderCurrentView();
-  showToast(`Batch ${batch} saved as your default batch! ✓`, "success");
 }
 if (typeof window !== "undefined") {
   window.switchBatch = switchBatch;
