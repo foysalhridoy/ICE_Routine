@@ -366,6 +366,25 @@ function parseRoutineData(csvText) {
     }
   }
 
+  // Ensure all standard department batches (L1T1 through L4T3) are initialized in routine.batches and allBatchesList
+  const standardBatches = [
+    "L1T1", "L1T2", "L1T3",
+    "L2T1", "L2T2", "L2T3",
+    "L3T1", "L3T2", "L3T3",
+    "L4T1", "L4T2", "L4T3"
+  ];
+  for (const sb of standardBatches) {
+    if (!routine.batches[sb]) {
+      routine.batches[sb] = {};
+      for (const d of routine.days) {
+        routine.batches[sb][d] = [];
+      }
+    }
+    if (!routine.allBatchesList.includes(sb)) {
+      routine.allBatchesList.push(sb);
+    }
+  }
+
   // Sort batches logically: L1T1, L1T2, L1T3, L2T1, L2T2, L2T3, etc.
   routine.allBatchesList.sort((a, b) => {
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });

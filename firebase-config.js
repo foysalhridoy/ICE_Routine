@@ -172,6 +172,18 @@ class FirebaseSyncService {
    * Real-time visitor counter & live presence tracker (100% Real, Firestore-backed)
    */
   initVisitorTracker(onUpdate) {
+    // 0. Immediate synchronous cache playback (zero reload delay)
+    try {
+      const cachedTotal = localStorage.getItem('ice_routine_total_visits');
+      const cachedLive = localStorage.getItem('ice_routine_live_visitors');
+      if (onUpdate && (cachedTotal || cachedLive)) {
+        onUpdate({
+          total: cachedTotal ? Number(cachedTotal) : undefined,
+          online: cachedLive ? Number(cachedLive) : undefined
+        });
+      }
+    } catch (e) {}
+
     if (!this.initialized && !this.init()) {
       console.warn("Visitor tracker could not initialize Firebase");
       return;
@@ -239,6 +251,9 @@ class FirebaseSyncService {
 
         // Always show at least 1 (the current user)
         const finalOnline = Math.max(1, activeCount);
+        try {
+          localStorage.setItem('ice_routine_live_visitors', finalOnline);
+        } catch (e) {}
 
         // Opportunistic housekeeping: prune stale docs (max 5 per cycle)
         if (staleDocs.length > 0) {
@@ -258,6 +273,9 @@ class FirebaseSyncService {
         if (doc.exists) {
           const data = doc.data();
           const total = data.totalVisits || 1;
+          try {
+            localStorage.setItem('ice_routine_total_visits', total);
+          } catch (e) {}
           if (onUpdate) {
             onUpdate({ total: total });
           }

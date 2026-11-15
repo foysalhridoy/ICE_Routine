@@ -3,15 +3,47 @@
  * Premium UX with Google Sans & Bengali Typography, Verified Faculty Integration & Responsive Layouts
  */
 
+// Check First-Time Visit: If no batch is saved in localStorage, route to batch selection
+(function checkFirstVisit() {
+  if (typeof window === "undefined") return;
+  const p = (window.location.pathname || "").toLowerCase();
+  const savedBatch = localStorage.getItem("ice_user_batch");
+  // Only redirect if no batch is saved and not already on batch.html
+  if (!savedBatch && !p.includes("batch.html")) {
+    window.location.replace("batch.html?firstVisit=true");
+  }
+})();
+
+// Page Routing Helper - Automatically detects which standalone page is loaded
+function detectCurrentPage() {
+  if (typeof window === "undefined") return { view: "today", dayFilter: "today" };
+  const p = (window.location.pathname || "").toLowerCase();
+  if (p.includes("batch")) {
+    return { view: "batch", dayFilter: "all" };
+  }
+  if (p.includes("alldays")) {
+    return { view: "alldays", dayFilter: "all" };
+  }
+  if (p.includes("teacher")) {
+    return { view: "teacher", dayFilter: "all" };
+  }
+  if (p.includes("update")) {
+    return { view: "update", dayFilter: "all" };
+  }
+  return { view: "today", dayFilter: "today" };
+}
+
+const initialPageInfo = detectCurrentPage();
+
 // Application State
 const state = {
   routine: null,
   routineUpdates: [],
-  selectedBatch: "L1T1",
-  activeView: "batch", // "batch" | "master" | "teacher" | "room" | "courses"
+  selectedBatch: localStorage.getItem("ice_user_batch") || "L1T1",
+  activeView: initialPageInfo.view, // "today" | "batch" | "alldays" | "teacher" | "update"
   courseLevelFilter: "all",
   courseSearchQuery: "",
-  dayFilter: "all", // "all" | "today"
+  dayFilter: initialPageInfo.dayFilter, // "all" | "today"
   searchQuery: "",
   displayMode: localStorage.getItem("ice_display_mode") || "table", // "table" | "cards"
   theme: "light",
@@ -26,18 +58,96 @@ if (typeof window !== "undefined") {
 }
 
 /**
- * Switch batch and view safely
+ * Universal Batch Label Synchronization across all pages & pills
+ */
+function syncActiveBatchLabels(batch) {
+  const current = batch || state.selectedBatch || localStorage.getItem("ice_user_batch") || "L1T1";
+  document.querySelectorAll("#todayActiveBatchTag, #heroActiveBatchTag, .active-batch-tag, .heroActiveBatchTag").forEach(el => {
+    el.textContent = current;
+  });
+}
+if (typeof window !== "undefined") {
+  window.syncActiveBatchLabels = syncActiveBatchLabels;
+}
+
+/**
+ * Select batch from the visual card hub and redirect to Today routine
+ */
+function selectBatchAndGoToToday(batch) {
+  if (!batch) return;
+  state.selectedBatch = batch;
+  try {
+    localStorage.setItem("ice_user_batch", batch);
+  } catch (e) {}
+
+  syncActiveBatchLabels(batch);
+
+  // Highlight selected card visually
+  document.querySelectorAll(".batch-select-card").forEach(c => {
+    const isTarget = c.dataset.batch === batch;
+    c.classList.toggle("active-card", isTarget);
+    const dot = c.querySelector(".batch-active-glow-dot");
+    if (dot) dot.style.display = isTarget ? "inline-block" : "none";
+    const cta = c.querySelector(".batch-card-cta");
+    if (cta) {
+      cta.style.display = isTarget ? "inline-flex" : "none";
+      cta.innerHTML = isTarget ? `<span>Active ✓</span>` : "";
+    }
+  });
+
+  showToast(`Batch ${batch} selected! Opening your Today routine...`, "success");
+
+  // Smooth redirection to Today Routine (index.html)
+  setTimeout(() => {
+    window.location.href = "index.html";
+  }, 220);
+}
+if (typeof window !== "undefined") {
+  window.selectBatchAndGoToToday = selectBatchAndGoToToday;
+}
+
+/**
+ * Highlight active batch cards on batch.html
+ */
+function syncBatchCardsOnBatchPage() {
+  const current = localStorage.getItem("ice_user_batch") || state.selectedBatch;
+  if (!current) return;
+  syncActiveBatchLabels(current);
+
+  document.querySelectorAll(".batch-select-card").forEach(c => {
+    const isTarget = c.dataset.batch === current;
+    c.classList.toggle("active-card", isTarget);
+    const dot = c.querySelector(".batch-active-glow-dot");
+    if (dot) dot.style.display = isTarget ? "inline-block" : "none";
+    const cta = c.querySelector(".batch-card-cta");
+    if (cta) {
+      cta.style.display = isTarget ? "inline-flex" : "none";
+      cta.innerHTML = isTarget ? `<span>Active ✓</span>` : "";
+    }
+  });
+}
+if (typeof window !== "undefined") {
+  window.syncBatchCardsOnBatchPage = syncBatchCardsOnBatchPage;
+}
+
+/**
+ * Switch batch and view safely - persists selected batch in localStorage
  */
 function switchBatch(batch) {
   state.selectedBatch = batch;
-  state.activeView = "batch";
-  state.dayFilter = "today"; // Default to today's classes on batch select
-  updateViewTabs();
+  try {
+    localStorage.setItem("ice_user_batch", batch);
+  } catch (e) {}
+
+  syncActiveBatchLabels(batch);
+
   document.querySelectorAll(".batch-chip").forEach(c => {
     c.classList.toggle("active", c.textContent.trim() === batch);
   });
+  updateViewTabs();
   renderStats();
   renderCurrentView();
+  showToast(`Batch ${batch} saved as your default batch! ✓`, "success");
 }
 if (typeof window !== "undefined") {
   window.switchBatch = switchBatch;
@@ -146,9 +256,47 @@ window.clearSearchFilter = clearSearchFilter;
  */
 function setDayFilter(filter) {
   state.dayFilter = filter;
+  if (filter === "today") {
+    if (state.activeView !== "batch") state.activeView = "today";
+    setBottomNavActive("today");
+  } else {
+    if (state.activeView !== "batch") state.activeView = "alldays";
+    setBottomNavActive("alldays");
+  }
+  updateViewTabs();
   renderCurrentView();
 }
 window.setDayFilter = setDayFilter;
+
+/**
+ * Bottom Floating Navbar Navigation Handlers
+ */
+function setBottomNavActive(tabKey) {
+  document.querySelectorAll(".nav-dock-item").forEach(item => {
+    item.classList.toggle("active", item.dataset.tab === tabKey);
+  });
+}
+window.setBottomNavActive = setBottomNavActive;
+
+function handleBottomNavClick(tabKey) {
+  const current = detectCurrentPage().view;
+  const targetPages = {
+    batch: "batch.html",
+    today: "index.html",
+    alldays: "alldays.html",
+    teacher: "teachers.html",
+    update: "update.html"
+  };
+
+  if (targetPages[tabKey] && current !== tabKey) {
+    window.location.href = targetPages[tabKey];
+    return;
+  }
+
+  // Already on this page - smooth scroll to top
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+window.handleBottomNavClick = handleBottomNavClick;
 
 /**
  * Show a modern toast notification
@@ -170,11 +318,16 @@ function showToast(message, type = "success") {
 }
 
 /**
- * Ensure Clean White Theme
+ * Permanent Light Theme Enforcement (Dark Theme completely removed per user request)
  */
 function applyTheme() {
+  state.theme = "light";
   document.documentElement.setAttribute("data-theme", "light");
+  try {
+    localStorage.removeItem("ice_routine_theme");
+  } catch (e) {}
 }
+window.applyTheme = applyTheme;
 
 /**
  * Toggle Sheet Configuration Drawer on Mobile
@@ -512,8 +665,7 @@ function renderNewsTicker(updates = []) {
           <div class="ticker-item" data-batch="${item.batch}" data-day="${item.day}" role="button" tabindex="0" title="Click to view ${item.batch} ${item.day} schedule">
             <span class="ticker-bolt-icon" aria-hidden="true">⚡</span>
             <span class="ticker-batch-tag">${item.batch}</span>
-            <span class="ticker-day-tag">${item.day}</span>
-            <span class="ticker-item-text"><strong>${item.batch}</strong> schedule updated on <strong>${item.day}</strong></span>
+            <span class="ticker-action-text"><strong class="ticker-day-highlight">${item.day}</strong> schedule updated</span>
             ${timePill}
           </div>
         `;
@@ -837,26 +989,50 @@ function handleFileUpload(file) {
 
 function onDataLoaded(statusMsg) {
   setLoading(false, statusMsg);
-  renderBatchChips();
-  if (!state.routine.batches[state.selectedBatch]) {
+  const savedBatch = localStorage.getItem("ice_user_batch");
+  if (savedBatch) {
+    state.selectedBatch = savedBatch;
+    if (state.routine) {
+      if (!state.routine.batches) state.routine.batches = {};
+      if (!state.routine.batches[savedBatch]) {
+        state.routine.batches[savedBatch] = {};
+        (state.routine.days || ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]).forEach(d => {
+          state.routine.batches[savedBatch][d] = [];
+        });
+      }
+      if (state.routine.allBatchesList && !state.routine.allBatchesList.includes(savedBatch)) {
+        state.routine.allBatchesList.push(savedBatch);
+        state.routine.allBatchesList.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      }
+    }
+  } else if (!state.routine.batches[state.selectedBatch]) {
     state.selectedBatch = state.routine.allBatchesList[0] || "L1T1";
   }
-  state.dayFilter = "today"; // Show today's classes first by default
+
+  // Universal synchronization of active batch across all tags and pills
+  syncActiveBatchLabels(state.selectedBatch);
+
+  setBottomNavActive(state.activeView);
+  syncBatchCardsOnBatchPage();
+  renderBatchChips();
+  updateViewTabs();
   renderStats();
   renderCurrentView();
 }
 
 function setLoading(isLoading, text) {
   if (elements.sheetStatus) {
-    elements.sheetStatus.textContent = text;
-    elements.sheetStatus.style.background = isLoading ? "var(--primary-light)" : "var(--accent-emerald-light)";
+    elements.sheetStatus.innerHTML = isLoading 
+      ? `<span class="spinner"></span> <span>${text}</span>`
+      : `<span class="status-pulse-dot"></span> <span>${text}</span>`;
+    elements.sheetStatus.style.background = isLoading ? "var(--primary-light)" : "#e6f9f0";
     elements.sheetStatus.style.color = isLoading ? "var(--primary)" : "#065f46";
   }
   if (elements.btnFetchSheet) {
     elements.btnFetchSheet.disabled = isLoading;
     elements.btnFetchSheet.innerHTML = isLoading 
       ? `<span class="spinner"></span> Syncing...`
-      : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.36L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.36L3 16M3 21v-5h5"/></svg> Fetch & Sync`;
+      : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.36L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.36L3 16M3 21v-5h5"/></svg> <span>Fetch &amp; Sync</span>`;
   }
 }
 
@@ -1166,17 +1342,21 @@ function openWelcomeBatchModal() {
 
   const batches = (state.routine && state.routine.allBatchesList && state.routine.allBatchesList.length > 0)
     ? state.routine.allBatchesList
-    : ["L1T1", "L1T2", "L2T1", "L2T2", "L3T1", "L3T2", "L4T1", "L4T2"];
+    : ["L1T1", "L1T2", "L1T3", "L2T1", "L2T2", "L2T3", "L3T1", "L3T2", "L3T3", "L4T1", "L4T2", "L4T3"];
 
   const termShortMap = {
     "L1T1": "Y1 · T1",
     "L1T2": "Y1 · T2",
+    "L1T3": "Y1 · T3",
     "L2T1": "Y2 · T1",
     "L2T2": "Y2 · T2",
+    "L2T3": "Y2 · T3",
     "L3T1": "Y3 · T1",
     "L3T2": "Y3 · T2",
+    "L3T3": "Y3 · T3",
     "L4T1": "Y4 · T1",
     "L4T2": "Y4 · T2",
+    "L4T3": "Y4 · T3",
   };
 
   container.innerHTML = `
@@ -1264,7 +1444,7 @@ function openTodayClassesModal(targetBatch = state.selectedBatch) {
   // Populate batch switcher chips inside popup
   const batches = (state.routine && state.routine.allBatchesList && state.routine.allBatchesList.length > 0)
     ? state.routine.allBatchesList
-    : ["L1T1", "L1T2", "L2T1", "L2T2", "L3T1", "L3T2", "L4T1", "L4T2"];
+    : ["L1T1", "L1T2", "L1T3", "L2T1", "L2T2", "L2T3", "L3T1", "L3T2", "L3T3", "L4T1", "L4T2", "L4T3"];
 
   if (batchChipsEl) {
     batchChipsEl.innerHTML = batches.map(b => `
@@ -1401,12 +1581,13 @@ if (typeof window !== "undefined") {
  * Render based on current view
  */
 function renderCurrentView() {
+  syncActiveBatchLabels(state.selectedBatch);
   if (state.activeView === "courses") {
     renderCoursesView();
     return;
   }
   if (!state.routine) return;
-  if (state.activeView === "batch") {
+  if (state.activeView === "batch" || state.activeView === "today" || state.activeView === "alldays") {
     renderBatchRoutine();
   } else if (state.activeView === "master") {
     renderMasterView();
@@ -1490,23 +1671,9 @@ function renderBatchRoutine() {
     }
   });
 
-  // View Mode: Mobile strictly Card View, PC/Large Screens strictly Table View
-  const isMobileScreen = typeof window !== "undefined" && window.innerWidth <= 768;
-  const isCardsMode = isMobileScreen;
-  const viewToggleBarHtml = `
-    <div class="routine-view-toggle-bar no-print">
-      <div class="day-filter-pill-group">
-        <button class="view-toggle-btn ${!isTodayOnly ? 'active' : ''}" onclick="setDayFilter('all')" title="Show all week classes">
-          <span class="btn-emoji all-days-emoji">🗓️</span>
-          <span class="btn-text">All Days</span>
-        </button>
-        <button class="view-toggle-btn ${isTodayOnly ? 'active' : ''}" onclick="setDayFilter('today')" title="Show only today's classes">
-          <span class="btn-emoji today-emoji">⚡</span>
-          <span class="btn-text">Today</span>
-        </button>
-      </div>
-    </div>
-  `;
+  // View Mode: Routine Table Timetable is the primary responsive view (matches reference screenshot)
+  const isCardsMode = false;
+  const viewToggleBarHtml = "";
 
   let scheduleBodyHtml = "";
 
@@ -1651,6 +1818,7 @@ function renderBatchRoutine() {
         `;
       } else {
         let dayRowsHtml = "";
+        let mobileItemsHtml = "";
         let alternateCounter = 0;
 
         classes.forEach((cls) => {
@@ -1659,14 +1827,23 @@ function renderBatchRoutine() {
           const facName = fac ? fac.name : cls.teacher;
           const course = getCourseInfo(cls.courseCode);
           const timeStatus = getClassTimeState(cls.time, day);
+          const isRunning = isToday && timeStatus && timeStatus.state === 'now';
           let rowClass = (alternateCounter % 2 === 0) ? "row-fill-purple" : "row-fill-green";
-          if (isToday && timeStatus && timeStatus.state === 'now') {
+          if (isRunning) {
             rowClass = "row-running-class";
           }
 
+          // Format time range nicely (split start & end for responsive wrap)
+          const timeRaw = cls.time || "";
+          const timeParts = timeRaw.split("-").map(s => s.trim());
+          const timeHtml = timeParts.length === 2
+            ? `<div class="time-badge-box"><span class="time-start">${timeParts[0]}</span><span class="time-sep">-</span><span class="time-end">${timeParts[1]}</span></div>`
+            : `<div class="time-badge-box"><span>${timeRaw}</span></div>`;
+
+          // Desktop Table Row
           dayRowsHtml += `
             <tr class="${rowClass}">
-              <td class="course-cell-code">
+              <td class="course-cell-code cell-center">
                 <div class="course-cell-wrapper">
                   <span class="course-code-main"><strong>${cls.courseCode}</strong></span>
                   ${course.title && course.title !== "Course Title Not Specified" ? `
@@ -1675,16 +1852,56 @@ function renderBatchRoutine() {
                 </div>
               </td>
               <td class="time-cell-text cell-center">
-                <div>${cls.time}</div>
-                ${timeStatus ? `<div style="margin-top: 0.3rem;">${timeStatus.badge}</div>` : ''}
+                ${timeHtml}
+                ${timeStatus ? `<div class="time-live-badge-wrap">${timeStatus.badge}</div>` : ''}
               </td>
               <td class="cell-center">
                 <span class="room-cell-text">${cls.room}</span>
               </td>
               <td class="cell-center">
-                <span class="teacher-initial-tag" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="Click to view faculty details for ${cls.teacher}" role="button" tabindex="0">${cls.teacher}</span>
+                <span class="teacher-initial-tag" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="Click to view faculty details for ${cls.teacher} (${facName})" role="button" tabindex="0">${cls.teacher}</span>
               </td>
             </tr>
+          `;
+
+          // Clean, Spacious, Non-Ghichimichi Mobile Schedule Card
+          mobileItemsHtml += `
+            <div class="mobile-routine-item ${rowClass} ${isRunning ? 'is-running-class' : ''}">
+              <div class="mobile-routine-top-row">
+                <div class="mobile-course-badge-wrap">
+                  <span class="course-code-main"><strong>${cls.courseCode}</strong></span>
+                  ${isRunning ? `<span class="live-pill-mobile"><span class="live-pulse-dot"></span>LIVE NOW</span>` : ''}
+                </div>
+                <div class="mobile-routine-time-pill">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <span>${cls.time}</span>
+                </div>
+              </div>
+
+              ${course.title && course.title !== "Course Title Not Specified" ? `
+                <div class="mobile-routine-title">${course.title}</div>
+              ` : ''}
+
+              <div class="mobile-routine-meta-row">
+                <div class="mobile-meta-room">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <span>Room <strong>${cls.room}</strong></span>
+                </div>
+                <div class="mobile-meta-teacher" onclick="openFacultyModal('${cls.teacher}', '${cls.courseCode}')" title="Faculty details for ${cls.teacher} (${facName})" role="button" tabindex="0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                  </svg>
+                  <span>Faculty: <strong>${cls.teacher}</strong></span>
+                </div>
+              </div>
+            </div>
           `;
         });
 
@@ -1694,20 +1911,27 @@ function renderBatchRoutine() {
               <span class="day-name">${day} ${isToday ? '<span class="today-tag-card-modern"><span class="today-spark-dot"></span><span>TODAY</span></span>' : ''}</span>
               <span class="day-count-badge">${classes.length} Class${classes.length > 1 ? 'es' : ''}</span>
             </div>
-            <div class="table-scroll-container">
+
+            <!-- Desktop View: Crisp Timetable Table -->
+            <div class="table-scroll-container routine-desktop-view">
               <table class="routine-grid-table">
                 <thead>
                   <tr>
-                    <th style="width: 32%; text-align: left;">Course</th>
-                    <th style="width: 28%; text-align: center;">Time</th>
-                    <th style="width: 20%; text-align: center;">Room No.</th>
-                    <th style="width: 20%; text-align: center;">Teacher Initial</th>
+                    <th class="col-course" style="width: 33%; text-align: center;">Course</th>
+                    <th class="col-time" style="width: 29%; text-align: center;">Time</th>
+                    <th class="col-room" style="width: 19%; text-align: center;"><span class="hdr-full">Room No.</span><span class="hdr-short">Room</span></th>
+                    <th class="col-teacher" style="width: 19%; text-align: center;"><span class="hdr-full">Teacher Initial</span><span class="hdr-short">Teacher</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   ${dayRowsHtml}
                 </tbody>
               </table>
+            </div>
+
+            <!-- Mobile View: Clean, Spacious, Breathable Class Schedule Cards (Zero Ghichimichi) -->
+            <div class="routine-mobile-schedule-view">
+              ${mobileItemsHtml}
             </div>
           </div>
         `;
@@ -1728,7 +1952,6 @@ function renderBatchRoutine() {
         <p>Daffodil International University &bull; Class Routine (${state.routine?.semester || "Fall-2026"}) &bull; Batch: <strong>${batch}</strong> (${isTodayOnly ? "Today's Schedule" : "Weekly Schedule"})</p>
       </div>
 
-      ${viewToggleBarHtml}
       ${scheduleBodyHtml}
 
 
@@ -1928,6 +2151,27 @@ function renderTeacherView() {
     });
   });
 
+  // Sort chronologically by Day of Week then Start Time
+  const DAY_ORDER = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  function parseClassStartTimeMinutes(timeStr) {
+    if (!timeStr) return 9999;
+    const start = timeStr.split("-")[0].trim().toUpperCase();
+    const m = start.match(/(\d+):(\d+)\s*(AM|PM)?/);
+    if (!m) return 9999;
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    const period = m[3];
+    if (period === "PM" && h < 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return h * 60 + min;
+  }
+
+  teacherClasses.sort((a, b) => {
+    const dDiff = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
+    if (dDiff !== 0) return dDiff;
+    return parseClassStartTimeMinutes(a.time) - parseClassStartTimeMinutes(b.time);
+  });
+
   const search = (state.searchQuery || "").trim().toLowerCase();
   let displayedTeacherClasses = teacherClasses;
   if (search) {
@@ -1940,13 +2184,28 @@ function renderTeacherView() {
     );
   }
 
+  // Count unique courses and batches
+  const uniqueBatches = Array.from(new Set(teacherClasses.map(c => c.batch))).sort();
+  const uniqueCourses = Array.from(new Set(teacherClasses.map(c => c.courseCode))).sort();
+
+  // Short day name mapping to prevent text clipping
+  const SHORT_DAY_NAMES = {
+    "Saturday": "Sat",
+    "Sunday": "Sun",
+    "Monday": "Mon",
+    "Tuesday": "Tue",
+    "Wednesday": "Wed",
+    "Thursday": "Thu",
+    "Friday": "Fri"
+  };
+
   let tableContentHtml = "";
   if (teacherClasses.length === 0) {
-    tableContentHtml = `<tr><td colspan="5" style="padding: 2.5rem; text-align: center;">No classes allocated for ${selectedTeacher}</td></tr>`;
+    tableContentHtml = `<tr><td colspan="5" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">No classes scheduled for <strong>${selectedTeacher}</strong></td></tr>`;
   } else if (displayedTeacherClasses.length === 0) {
     tableContentHtml = `
       <tr>
-        <td colspan="5" style="padding: 2rem;">
+        <td colspan="5" style="padding: 2.5rem 1rem;">
           <div class="empty-search-state" style="margin: 0; padding: 1.5rem;">
             <div class="empty-icon">🔍</div>
             <h3>No classes match "${state.searchQuery}" for ${selectedTeacher}</h3>
@@ -1956,14 +2215,34 @@ function renderTeacherView() {
       </tr>
     `;
   } else {
-    tableContentHtml = displayedTeacherClasses.map(c => {
+    let lastDay = null;
+    tableContentHtml = displayedTeacherClasses.map((c, idx) => {
       const cInfo = getCourseInfo(c.courseCode);
+      const isNewDay = c.day !== lastDay;
+      lastDay = c.day;
+      const shortDay = SHORT_DAY_NAMES[c.day] || c.day.slice(0, 3);
+
+      const timeRaw = c.time || "";
+      const timeParts = timeRaw.split("-").map(s => s.trim());
+      const timeHtml = timeParts.length === 2
+        ? `<div class="time-badge-box"><span class="time-start">${timeParts[0]}</span><span class="time-sep">-</span><span class="time-end">${timeParts[1]}</span></div>`
+        : `<div class="time-badge-box"><span>${timeRaw}</span></div>`;
+
+      const rowClass = (idx % 2 === 0) ? "row-fill-green" : "row-fill-purple";
+      const dayBoundaryClass = (isNewDay && idx > 0) ? `day-boundary-row day-boundary-${c.day.toLowerCase()}` : "";
+
       return `
-        <tr>
-          <td><strong>${c.day}</strong></td>
-          <td>${c.time}</td>
-          <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
-          <td class="course-cell-code">
+        <tr class="${rowClass} ${dayBoundaryClass}">
+          <td class="cell-day" style="padding-left: 1rem;">
+            <span class="teacher-day-pill day-pill-${c.day.toLowerCase()}" title="${c.day}">${shortDay}</span>
+          </td>
+          <td class="cell-time cell-center">
+            ${timeHtml}
+          </td>
+          <td class="cell-batch cell-center">
+            <span class="batch-chip teacher-batch-chip">${c.batch}</span>
+          </td>
+          <td class="course-cell-code" style="padding-left: 1rem;">
             <div class="course-cell-wrapper">
               <span class="course-code-main"><strong>${c.courseCode}</strong></span>
               ${cInfo.title && cInfo.title !== "Course Title Not Specified" ? `
@@ -1971,50 +2250,108 @@ function renderTeacherView() {
               ` : ""}
             </div>
           </td>
-          <td class="room-cell-text">${c.room}</td>
+          <td class="cell-room cell-center">
+            <span class="room-cell-text">${c.room}</span>
+          </td>
         </tr>
       `;
     }).join("");
   }
 
   let html = `
-    <div class="control-card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <label style="font-weight: 700; font-size: 0.95rem; margin-right: 0.75rem;">Select Faculty Member:</label>
-          <select class="text-input" id="teacherSelectDropdown" style="display: inline-block; width: auto; min-width: 260px;">
-            ${teachers.map(t => `<option value="${t}" ${t === selectedTeacher ? "selected" : ""}>${t} - ${getFacultyInfo(t)?.name || t}</option>`).join("")}
-          </select>
+    <div class="teacher-details-container">
+      <!-- 1. Faculty Picker & Filter Toolbar -->
+      <div class="teacher-controls-card">
+        <div class="teacher-picker-row">
+          <div class="teacher-select-box">
+            <label for="teacherSelectDropdown" class="teacher-select-label">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <span>Select Faculty Member:</span>
+            </label>
+            <div class="custom-dropdown-wrap">
+              <select class="teacher-select-input" id="teacherSelectDropdown">
+                ${teachers.map(t => `<option value="${t}" ${t === selectedTeacher ? "selected" : ""}>${t} — ${getFacultyInfo(t)?.name || t}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div class="teacher-portal-action">
+            <span class="faculty-stat-pill">
+              <span class="stat-dot-green"></span>
+              <strong>${teachers.length}</strong> Faculty Members
+            </span>
+          </div>
         </div>
-        <a href="https://faculty.daffodilvarsity.edu.bd/teachers/ice.html" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
-          Official DIU Faculty Portal ↗
-        </a>
+
+        <!-- Faculty Quick Initials Chips -->
+        <div class="teacher-quick-chips-wrapper">
+          <span class="chips-label">Quick Select:</span>
+          <div class="teacher-quick-chips-scroll">
+            ${teachers.map(t => `
+              <button type="button" class="teacher-initial-chip ${t === selectedTeacher ? 'active' : ''}" onclick="window.selectTeacherQuick('${t}')" title="${getFacultyInfo(t)?.name || t}">
+                ${t}
+              </button>
+            `).join("")}
+          </div>
+        </div>
       </div>
 
-      <div style="background: var(--primary-light); padding: 1.25rem; border-radius: var(--radius-sm); margin-bottom: 1.5rem; border-left: 4px solid var(--primary); display: flex; align-items: center; gap: 1.25rem;">
-        ${fac.photoUrl ? `<img src="${fac.photoUrl}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">` : ''}
-        <div>
-          <h3 style="color: var(--primary-hover); font-size: 1.25rem; font-weight: 800;">${fac.name} (${selectedTeacher})</h3>
-          <p style="color: #0f172a; font-size: 0.9rem; font-weight: 600;">${fac.designation} &bull; ${fac.department}</p>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Total Classes: <strong>${teacherClasses.length} sessions/week</strong></p>
+      <!-- 2. Faculty Profile Card -->
+      <div class="faculty-profile-card">
+        <div class="faculty-avatar-container">
+          ${fac.photoUrl 
+            ? `<img src="${fac.photoUrl}" alt="${fac.name}" class="faculty-avatar-photo">` 
+            : `<div class="faculty-avatar-initials"><span>${selectedTeacher}</span></div>`
+          }
+        </div>
+        <div class="faculty-info-block">
+          <div class="faculty-header-line">
+            <h3 class="faculty-full-name">${fac.name}</h3>
+            <span class="faculty-code-tag">${selectedTeacher}</span>
+          </div>
+          <p class="faculty-designation-line">${fac.designation} &bull; ${fac.department}</p>
+          <div class="faculty-stats-strip">
+            <div class="faculty-stat-pill">
+              <span class="stat-dot-green"></span>
+              <span class="stat-text">Total: <strong>${teacherClasses.length} sessions/week</strong></span>
+            </div>
+            ${uniqueBatches.length > 0 ? `
+              <div class="faculty-stat-pill">
+                <span class="stat-icon-batch">👥</span>
+                <span class="stat-text">Batches: <strong>${uniqueBatches.join(", ")}</strong></span>
+              </div>
+            ` : ''}
+            ${uniqueCourses.length > 0 ? `
+              <div class="faculty-stat-pill">
+                <span class="stat-icon-course">📚</span>
+                <span class="stat-text">Courses: <strong>${uniqueCourses.join(", ")}</strong></span>
+              </div>
+            ` : ''}
+          </div>
         </div>
       </div>
 
-      <div class="table-scroll-container">
-        <table class="routine-grid-table">
-          <thead>
-            <tr>
-              <th>Day</th>
-              <th>Time</th>
-              <th>Batch</th>
-              <th>Course</th>
-              <th>Room</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${tableContentHtml}
-          </tbody>
-        </table>
+      <!-- 3. Teacher Schedule Table Card -->
+      <div class="teacher-table-card">
+        <div class="table-scroll-container">
+          <table class="routine-grid-table teacher-schedule-table">
+            <thead>
+              <tr>
+                <th class="col-th-day" style="width: 14%; text-align: left; padding-left: 1.25rem;">DAY</th>
+                <th class="col-th-time" style="width: 24%; text-align: center;">TIME</th>
+                <th class="col-th-batch" style="width: 12%; text-align: center;">BATCH</th>
+                <th class="col-th-course" style="width: 36%; text-align: left; padding-left: 1rem;">COURSE</th>
+                <th class="col-th-room" style="width: 14%; text-align: center;">ROOM</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableContentHtml}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   `;
@@ -2026,6 +2363,10 @@ function renderTeacherView() {
     renderTeacherView();
   });
 }
+window.selectTeacherQuick = function(initial) {
+  state.selectedTeacher = initial;
+  renderTeacherView();
+};
 
 /**
  * Render Room View
@@ -2058,6 +2399,27 @@ function renderRoomView() {
     });
   });
 
+  // Sort chronologically by Day of Week then Start Time
+  const DAY_ORDER = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  function parseClassStartTimeMinutes(timeStr) {
+    if (!timeStr) return 9999;
+    const start = timeStr.split("-")[0].trim().toUpperCase();
+    const m = start.match(/(\d+):(\d+)\s*(AM|PM)?/);
+    if (!m) return 9999;
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    const period = m[3];
+    if (period === "PM" && h < 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return h * 60 + min;
+  }
+
+  roomClasses.sort((a, b) => {
+    const dDiff = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
+    if (dDiff !== 0) return dDiff;
+    return parseClassStartTimeMinutes(a.time) - parseClassStartTimeMinutes(b.time);
+  });
+
   const search = (state.searchQuery || "").trim().toLowerCase();
   let displayedRoomClasses = roomClasses;
   if (search) {
@@ -2070,13 +2432,24 @@ function renderRoomView() {
     );
   }
 
+  // Short day name mapping to prevent text clipping
+  const SHORT_DAY_NAMES = {
+    "Saturday": "Sat",
+    "Sunday": "Sun",
+    "Monday": "Mon",
+    "Tuesday": "Tue",
+    "Wednesday": "Wed",
+    "Thursday": "Thu",
+    "Friday": "Fri"
+  };
+
   let tableContentHtml = "";
   if (roomClasses.length === 0) {
-    tableContentHtml = `<tr><td colspan="5" style="padding: 2.5rem; text-align: center;">Room ${selectedRoom} is currently free.</td></tr>`;
+    tableContentHtml = `<tr><td colspan="5" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">Room ${selectedRoom} is currently free with no classes scheduled.</td></tr>`;
   } else if (displayedRoomClasses.length === 0) {
     tableContentHtml = `
       <tr>
-        <td colspan="5" style="padding: 2rem;">
+        <td colspan="5" style="padding: 2.5rem 1rem;">
           <div class="empty-search-state" style="margin: 0; padding: 1.5rem;">
             <div class="empty-icon">🔍</div>
             <h3>No classes match "${state.searchQuery}" in Room ${selectedRoom}</h3>
@@ -2086,14 +2459,34 @@ function renderRoomView() {
       </tr>
     `;
   } else {
-    tableContentHtml = displayedRoomClasses.map(c => {
+    let lastDay = null;
+    tableContentHtml = displayedRoomClasses.map((c, idx) => {
       const cInfo = getCourseInfo(c.courseCode);
+      const isNewDay = c.day !== lastDay;
+      lastDay = c.day;
+      const shortDay = SHORT_DAY_NAMES[c.day] || c.day.slice(0, 3);
+
+      const timeRaw = c.time || "";
+      const timeParts = timeRaw.split("-").map(s => s.trim());
+      const timeHtml = timeParts.length === 2
+        ? `<div class="time-badge-box"><span class="time-start">${timeParts[0]}</span><span class="time-sep">-</span><span class="time-end">${timeParts[1]}</span></div>`
+        : `<div class="time-badge-box"><span>${timeRaw}</span></div>`;
+
+      const rowClass = (idx % 2 === 0) ? "row-fill-green" : "row-fill-purple";
+      const dayBoundaryClass = (isNewDay && idx > 0) ? `day-boundary-row day-boundary-${c.day.toLowerCase()}` : "";
+
       return `
-        <tr>
-          <td><strong>${c.day}</strong></td>
-          <td>${c.time}</td>
-          <td><span class="batch-chip" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">${c.batch}</span></td>
-          <td class="course-cell-code">
+        <tr class="${rowClass} ${dayBoundaryClass}">
+          <td class="cell-day" style="padding-left: 1rem;">
+            <span class="teacher-day-pill day-pill-${c.day.toLowerCase()}" title="${c.day}">${shortDay}</span>
+          </td>
+          <td class="cell-time cell-center">
+            ${timeHtml}
+          </td>
+          <td class="cell-batch cell-center">
+            <span class="batch-chip teacher-batch-chip">${c.batch}</span>
+          </td>
+          <td class="course-cell-code" style="padding-left: 1rem;">
             <div class="course-cell-wrapper">
               <span class="course-code-main"><strong>${c.courseCode}</strong></span>
               ${cInfo.title && cInfo.title !== "Course Title Not Specified" ? `
@@ -2101,7 +2494,7 @@ function renderRoomView() {
               ` : ""}
             </div>
           </td>
-          <td>
+          <td class="cell-center">
             <span class="teacher-initial-tag" onclick="openFacultyModal('${c.teacher}', '${c.courseCode}')" title="Click to view faculty details for ${c.teacher}" role="button" tabindex="0">${c.teacher}</span>
           </td>
         </tr>
@@ -2110,34 +2503,48 @@ function renderRoomView() {
   }
 
   let html = `
-    <div class="control-card">
-      <div style="margin-bottom: 1.5rem;">
-        <label style="font-weight: 700; font-size: 0.95rem; margin-right: 0.75rem;">Select Room / Lab:</label>
-        <select class="text-input" id="roomSelectDropdown" style="display: inline-block; width: auto; min-width: 220px;">
-          ${rooms.map(r => `<option value="${r}" ${r === selectedRoom ? "selected" : ""}>Room / Lab ${r}</option>`).join("")}
-        </select>
+    <div class="teacher-details-container">
+      <div class="teacher-controls-card">
+        <div class="teacher-picker-row">
+          <div class="teacher-select-box">
+            <label for="roomSelectDropdown" class="teacher-select-label">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              <span>Select Room / Laboratory:</span>
+            </label>
+            <div class="custom-dropdown-wrap">
+              <select class="teacher-select-input" id="roomSelectDropdown">
+                ${rooms.map(r => `<option value="${r}" ${r === selectedRoom ? "selected" : ""}>Room / Lab ${r}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div class="teacher-portal-action">
+            <span class="faculty-stat-pill">
+              <strong>${roomClasses.length}</strong> Occupied Slots / Week
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div style="background: var(--primary-light); padding: 1.25rem; border-radius: var(--radius-sm); margin-bottom: 1.5rem; border-left: 4px solid var(--primary);">
-        <h3 style="color: var(--primary-hover); font-size: 1.25rem; font-weight: 800;">Room / Lab ${selectedRoom}</h3>
-        <p style="color: #0f172a; font-size: 0.9rem; font-weight: 600;">Weekly Occupied Slots: ${roomClasses.length} sessions</p>
-      </div>
-
-      <div class="table-scroll-container">
-        <table class="routine-grid-table">
-          <thead>
-            <tr>
-              <th>Day</th>
-              <th>Time</th>
-              <th>Batch</th>
-              <th>Course</th>
-              <th>Teacher</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${tableContentHtml}
-          </tbody>
-        </table>
+      <div class="teacher-table-card">
+        <div class="table-scroll-container">
+          <table class="routine-grid-table teacher-schedule-table">
+            <thead>
+              <tr>
+                <th class="col-th-day" style="width: 14%; text-align: left; padding-left: 1.25rem;">DAY</th>
+                <th class="col-th-time" style="width: 24%; text-align: center;">TIME</th>
+                <th class="col-th-batch" style="width: 12%; text-align: center;">BATCH</th>
+                <th class="col-th-course" style="width: 36%; text-align: left; padding-left: 1rem;">COURSE</th>
+                <th class="col-th-room" style="width: 14%; text-align: center;">TEACHER</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableContentHtml}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   `;
@@ -2174,12 +2581,16 @@ async function generateRoutineCanvas() {
   const termMap = {
     "L1T1": "1st Year · 1st Term",
     "L1T2": "1st Year · 2nd Term",
+    "L1T3": "1st Year · 3rd Term",
     "L2T1": "2nd Year · 1st Term",
     "L2T2": "2nd Year · 2nd Term",
+    "L2T3": "2nd Year · 3rd Term",
     "L3T1": "3rd Year · 1st Term",
     "L3T2": "3rd Year · 2nd Term",
+    "L3T3": "3rd Year · 3rd Term",
     "L4T1": "4th Year · 1st Term",
     "L4T2": "4th Year · 2nd Term",
+    "L4T3": "4th Year · 3rd Term",
   };
 
   const dayColors = {
@@ -2743,21 +3154,54 @@ function setCourseLevelFilter(level) {
 window.setCourseLevelFilter = setCourseLevelFilter;
 
 function updateViewTabs() {
-  elements.viewTabs = document.querySelectorAll(".nav-tab-btn");
-  elements.viewTabs.forEach(tab => {
-    if (tab.dataset.view === state.activeView) {
-      tab.classList.add("active");
-    } else {
-      tab.classList.remove("active");
-    }
-  });
-
+  const isBatchView = state.activeView === "batch";
   const batchSection = document.getElementById("batchSelectorSection");
   if (batchSection) {
-    batchSection.style.display = (state.activeView === "courses") ? "none" : "";
+    batchSection.style.display = isBatchView ? "" : "none";
   }
   if (elements.statsBanner) {
-    elements.statsBanner.style.display = (state.activeView === "courses") ? "none" : "";
+    elements.statsBanner.style.display = isBatchView ? "" : "none";
+  }
+  const heroCard = document.getElementById("heroFeaturedCard");
+  if (heroCard) {
+    heroCard.style.display = isBatchView ? "" : "none";
+  }
+
+  const scheduleHeadingText = document.getElementById("scheduleHeadingText");
+  const scheduleSubText = document.getElementById("scheduleSubText");
+  if (scheduleHeadingText) {
+    if (state.activeView === "teacher") {
+      scheduleHeadingText.textContent = "Teacher Details";
+      if (scheduleSubText) scheduleSubText.textContent = "Faculty Directory & Schedules";
+    } else if (state.activeView === "batch") {
+      scheduleHeadingText.textContent = "Batch Routine & Courses";
+      if (scheduleSubText) scheduleSubText.textContent = `Active: ${state.selectedBatch} • Complete Overview`;
+    } else if (state.activeView === "alldays") {
+      scheduleHeadingText.textContent = "Full Week Routine";
+      if (scheduleSubText) scheduleSubText.textContent = `Saturday to Thursday • Batch ${state.selectedBatch}`;
+    } else if (state.activeView === "update") {
+      scheduleHeadingText.textContent = "Routine Sync & Source";
+      if (scheduleSubText) scheduleSubText.textContent = "Active Departmental Spreadsheet & Cloud Engine";
+    } else {
+      scheduleHeadingText.textContent = "Happening now";
+      if (scheduleSubText) scheduleSubText.textContent = `Today's Schedule • Batch ${state.selectedBatch}`;
+    }
+  }
+
+  // Always keep batch tags updated dynamically everywhere
+  syncActiveBatchLabels(state.selectedBatch);
+
+  // Sync bottom navbar active tab
+  if (state.activeView === "teacher") {
+    setBottomNavActive("teacher");
+  } else if (state.activeView === "batch") {
+    setBottomNavActive("batch");
+  } else if (state.activeView === "alldays") {
+    setBottomNavActive("alldays");
+  } else if (state.activeView === "update") {
+    setBottomNavActive("update");
+  } else {
+    setBottomNavActive("today");
   }
 }
 
@@ -2780,15 +3224,74 @@ function setupEventListeners() {
     }
   });
 
-  elements.viewTabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-      state.activeView = tab.dataset.view;
-      updateViewTabs();
-      renderCurrentView();
-    });
+  // Sheet URL input live dynamic link update
+  const syncExternalSheetLink = () => {
+    const extLink = document.getElementById("openExternalSheetBtn");
+    if (extLink && elements.sheetUrlInput) {
+      extLink.href = elements.sheetUrlInput.value.trim() || state.defaultSheetUrl;
+    }
+  };
+  elements.sheetUrlInput?.addEventListener("input", syncExternalSheetLink);
+
+  // Paste from clipboard button
+  document.getElementById("btnPasteSheetUrl")?.addEventListener("click", async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && elements.sheetUrlInput) {
+          elements.sheetUrlInput.value = text.trim();
+          syncExternalSheetLink();
+          showToast("Sheet URL pasted from clipboard! ✓", "success");
+        }
+      } else {
+        elements.sheetUrlInput?.focus();
+        elements.sheetUrlInput?.select();
+      }
+    } catch (err) {
+      elements.sheetUrlInput?.focus();
+      elements.sheetUrlInput?.select();
+    }
   });
 
+  // Reset to default DIU ICE Fall 2026 sheet
+  document.getElementById("btnResetOfficialSheet")?.addEventListener("click", () => {
+    if (elements.sheetUrlInput) {
+      elements.sheetUrlInput.value = state.defaultSheetUrl;
+      syncExternalSheetLink();
+      showToast("Default DIU ICE Fall 2026 sheet restored! ✓", "info");
+    }
+  });
 
+  // Dynamic Header Shrink on Scroll (Morphs into floating rounded pill) - Ultra-smooth 60fps/120fps with rAF and Hysteresis
+  let scrollTicking = false;
+  let isHeaderScrolled = false;
+  window.addEventListener("scroll", () => {
+    if (!scrollTicking) {
+      window.requestAnimationFrame(() => {
+        const header = document.querySelector(".site-header");
+        if (header) {
+          const scrollY = window.scrollY || window.pageYOffset || 0;
+          if (!isHeaderScrolled && scrollY > 32) {
+            isHeaderScrolled = true;
+            header.classList.add("scrolled");
+          } else if (isHeaderScrolled && scrollY < 16) {
+            isHeaderScrolled = false;
+            header.classList.remove("scrolled");
+          }
+        }
+        scrollTicking = false;
+      });
+      scrollTicking = true;
+    }
+  }, { passive: true });
+
+  // Bottom Floating Navbar Click Listener (Tickify style)
+  document.querySelectorAll(".nav-dock-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const tab = item.dataset.tab;
+      handleBottomNavClick(tab);
+    });
+  });
 
   let searchDebounceTimer = null;
   elements.searchInput?.addEventListener("input", (e) => {
@@ -2819,15 +3322,9 @@ function setupEventListeners() {
     }
   });
 
-  // Header Date Badge Listener (Scrolls to routine and filters today directly without popup)
+  // Header Date Badge Listener (Switches directly to Today Routine)
   document.getElementById("headerDateBadge")?.addEventListener("click", () => {
-    setDayFilter("today");
-    if (state.activeView !== "batch") {
-      state.activeView = "batch";
-      updateViewTabs();
-      renderCurrentView();
-    }
-    elements.routineDisplayArea?.scrollIntoView({ behavior: "smooth" });
+    handleBottomNavClick("today");
   });
   document.getElementById("todayModalCloseBtn")?.addEventListener("click", closeTodayClassesModal);
   document.getElementById("btnTodayCloseAction")?.addEventListener("click", closeTodayClassesModal);
@@ -2851,9 +3348,6 @@ function setupEventListeners() {
       closeFacultyModal();
       closeTodayClassesModal();
       if (state.searchQuery) clearSearchFilter();
-    } else if (e.key === "/" && elements.searchInput && document.activeElement !== elements.searchInput && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
-      e.preventDefault();
-      elements.searchInput.focus();
     }
   });
 
@@ -2888,6 +3382,21 @@ function setupEventListeners() {
  * Real-Time Visitor Counter & Presence Integration
  */
 function initRealtimeVisitorTracker() {
+  // 1. Instant Cache Hydration: Render immediately from localStorage on reload (0ms latency)
+  try {
+    const cachedTotal = localStorage.getItem("ice_routine_total_visits");
+    const cachedLive = localStorage.getItem("ice_routine_live_visitors");
+    const totalEl = document.getElementById("totalVisitorCount");
+    const liveEl = document.getElementById("liveVisitorCount");
+    if (totalEl && cachedTotal) {
+      totalEl.textContent = Number(cachedTotal).toLocaleString();
+    }
+    if (liveEl && cachedLive) {
+      liveEl.textContent = Number(cachedLive).toLocaleString();
+    }
+  } catch (e) {}
+
+  // 2. Connect to real-time tracker & persist fresh values
   if (window.firebaseSync && typeof window.firebaseSync.initVisitorTracker === "function") {
     window.firebaseSync.initVisitorTracker((stats) => {
       if (stats.online !== undefined) {
@@ -2895,27 +3404,40 @@ function initRealtimeVisitorTracker() {
         if (liveEl) {
           liveEl.textContent = Number(stats.online).toLocaleString();
         }
+        try {
+          localStorage.setItem("ice_routine_live_visitors", stats.online);
+        } catch (e) {}
       }
       if (stats.total !== undefined) {
         const totalEl = document.getElementById("totalVisitorCount");
         if (totalEl) {
           totalEl.textContent = Number(stats.total).toLocaleString();
         }
+        try {
+          localStorage.setItem("ice_routine_total_visits", stats.total);
+        } catch (e) {}
       }
     });
   }
 }
 
 /**
- * Live Date in Navbar Header
+ * Live Date in Navbar Header & Hero Card
  */
 function updateLiveDateBadge() {
-  const dateEl = document.getElementById("headerDateText");
-  if (!dateEl) return;
   const now = new Date();
   const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(now);
   const formattedDate = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(now);
-  dateEl.textContent = `${dayName}, ${formattedDate}`;
+  const fullText = `${dayName}, ${formattedDate}`;
+
+  const headerDateEl = document.getElementById("headerDateText");
+  if (headerDateEl) headerDateEl.textContent = fullText;
+
+  const heroDateEl = document.getElementById("heroDateDisplay");
+  if (heroDateEl) heroDateEl.textContent = fullText;
+
+  const heroBatch = document.getElementById("heroActiveBatchTag");
+  if (heroBatch) heroBatch.textContent = state.selectedBatch;
 }
 window.updateLiveDateBadge = updateLiveDateBadge;
 
@@ -2927,11 +3449,13 @@ window.updateDigitalClock = updateDigitalClock;
 // Boot on Load
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme(state.theme);
+  initRealtimeVisitorTracker();
+  syncActiveBatchLabels(state.selectedBatch);
+  syncBatchCardsOnBatchPage();
   initSheetInput();
   setupEventListeners();
   updateLiveDateBadge();
   loadInitialData();
-  initRealtimeVisitorTracker();
   updateDigitalClock();
   setInterval(updateDigitalClock, 1000);
 });

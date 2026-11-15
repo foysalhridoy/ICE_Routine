@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Select Batch - DIU ICE Routine</title>
+  <meta name="description" content="Select your batch for DIU Department of Information and Communication Engineering.">
+  <meta name="theme-color" content="#f5f4ee">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/diu_ice_logo.png">
+
+  <!-- Google Sans & Bengali Typography via Google Fonts CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- External Libraries -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Site Navigation & Header -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-wrapper">
+        <div class="brand-animated-logo" title="DIU ICE Department Routine">
+          <div class="logo-orbit-ring" aria-hidden="true"></div>
+          <div class="logo-inner-emblem">
+            <svg class="logo-moving-svg" width="22" height="22" viewBox="0 0 32 32" fill="none"
+              xmlns="http://www.w3.org/2000/svg">
+              <rect class="logo-shape-outer" x="3" y="3" width="26" height="26" rx="8" stroke="url(#iceLogoGrad)"
+                stroke-width="2.4" />
+              <path class="logo-shape-wave" d="M7 16H10L13 9L18 23L21 16H25" stroke="url(#iceLogoGrad)"
+                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              <circle class="logo-shape-pulse" cx="16" cy="16" r="3" fill="#22c55e" />
+              <defs>
+                <linearGradient id="iceLogoGrad" x1="3" y1="3" x2="29" y2="29" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#22c55e" />
+                  <stop offset="0.5" stop-color="#10b981" />
+                  <stop offset="1" stop-color="#06b6d4" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+        <div class="brand-info">
+          <h1><span class="brand-highlight">ice</span> routine</h1>
+        </div>
+      </div>
+      <div class="header-tools">
+        <!-- Live Today's Date Pill (Click to view Today's Routine) -->
+        <a href="index.html" class="header-date-pill" id="headerDateBadge"
+          title="Today's Date · Click to view today's routine" aria-label="Today's Date and Routine">
+          <span class="date-pulse-dot" aria-hidden="true">
+            <span class="date-pulse-ring"></span>
+            <span class="date-pulse-core"></span>
+          </span>
+          <svg class="header-date-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect width="18" height="18" x="3" y="4" rx="3" ry="3" />
+            <line x1="16" x2="16" y1="2" y2="6" />
+            <line x1="8" x2="8" y1="2" y2="6" />
+            <line x1="3" x2="21" y1="10" y2="10" />
+          </svg>
+          <span class="header-date-text" id="headerDateText">Today's Date</span>
+        </a>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Body -->
+  <main class="main-wrapper">
+
+    <!-- 1. Real-Time Routine Updates News Ticker -->
+    <section class="routine-news-ticker no-print" id="routineNewsTicker" aria-label="Routine Updates News Ticker">
+      <div class="ticker-viewport" id="tickerViewport" tabindex="0" role="region" aria-live="polite">
+        <div class="ticker-track" id="tickerTrack">
+          <!-- Populated dynamically by app.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Beautiful Batch Selection Hero -->
+    <section class="batch-hub-hero no-print" id="batchHubHero">
+      <div class="batch-hub-meta-row">
+        <span class="batch-hub-badge">
+          <span class="pulse-dot-mini"></span>
+          <span>DIU ICE Department</span>
+        </span>
+        <div class="batch-current-pill" id="currentBatchPillWrap">
+          <span>Active Batch:</span>
+          <strong id="heroActiveBatchTag">
+            <script>document.write(localStorage.getItem('ice_user_batch') || 'L1T1');</script>
+          </strong>
+        </div>
+      </div>
+      <h2 class="batch-hub-title">Select Your Batch</h2>
+      <p class="batch-hub-desc">
+        Choose your batch below to view your class schedule. Your selection will be saved automatically, and taking you
+        directly to your Today's Routine!
+      </p>
+    </section>
+
+    <!-- 3. Level Groups & Batch Cards Interface (No Routine Tables here!) -->
+    <div class="batch-levels-container" id="batchLevelsContainer">
+
+      <!-- Level 1 -->
+      <section class="batch-level-section">
+        <div class="batch-level-header">
+          <span class="batch-level-tag">Level 1</span>
+          <h3 class="batch-level-name">1st Year Classes</h3>
+        </div>
+        <div class="batch-grid">
+          <div class="batch-select-card" data-batch="L1T1" onclick="selectBatchAndGoToToday('L1T1')">
+            <span class="batch-card-watermark" aria-hidden="true">L1T1</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 1</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L1T1</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+
+          <div class="batch-select-card" data-batch="L1T2" onclick="selectBatchAndGoToToday('L1T2')">
+            <span class="batch-card-watermark" aria-hidden="true">L1T2</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 2</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L1T2</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+
+          <div class="batch-select-card" data-batch="L1T3" onclick="selectBatchAndGoToToday('L1T3')">
+            <span class="batch-card-watermark" aria-hidden="true">L1T3</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 3</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L1T3</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Level 2 -->
+      <section class="batch-level-section">
+        <div class="batch-level-header">
+          <span class="batch-level-tag">Level 2</span>
+          <h3 class="batch-level-name">2nd Year Classes</h3>
+        </div>
+        <div class="batch-grid">
+          <div class="batch-select-card" data-batch="L2T1" onclick="selectBatchAndGoToToday('L2T1')">
+            <span class="batch-card-watermark" aria-hidden="true">L2T1</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 1</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L2T1</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+
+          <div class="batch-select-card" data-batch="L2T2" onclick="selectBatchAndGoToToday('L2T2')">
+            <span class="batch-card-watermark" aria-hidden="true">L2T2</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 2</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L2T2</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+
+          <div class="batch-select-card" data-batch="L2T3" onclick="selectBatchAndGoToToday('L2T3')">
+            <span class="batch-card-watermark" aria-hidden="true">L2T3</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 3</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L2T3</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Level 3 -->
+      <section class="batch-level-section">
+        <div class="batch-level-header">
+          <span class="batch-level-tag">Level 3</span>
+          <h3 class="batch-level-name">3rd Year Classes</h3>
+        </div>
+        <div class="batch-grid">
+          <div class="batch-select-card" data-batch="L3T1" onclick="selectBatchAndGoToToday('L3T1')">
+            <span class="batch-card-watermark" aria-hidden="true">L3T1</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 1</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L3T1</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+
+          <div class="batch-select-card" data-batch="L3T2" onclick="selectBatchAndGoToToday('L3T2')">
+            <span class="batch-card-watermark" aria-hidden="true">L3T2</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 2</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L3T2</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+
+          <div class="batch-select-card" data-batch="L3T3" onclick="selectBatchAndGoToToday('L3T3')">
+            <span class="batch-card-watermark" aria-hidden="true">L3T3</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 3</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L3T3</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Level 4 -->
+      <section class="batch-level-section">
+        <div class="batch-level-header">
+          <span class="batch-level-tag">Level 4</span>
+          <h3 class="batch-level-name">Final Year Classes</h3>
+        </div>
+        <div class="batch-grid">
+          <div class="batch-select-card" data-batch="L4T1" onclick="selectBatchAndGoToToday('L4T1')">
+            <span class="batch-card-watermark" aria-hidden="true">L4T1</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 1</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L4T1</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+
+          <div class="batch-select-card" data-batch="L4T2" onclick="selectBatchAndGoToToday('L4T2')">
+            <span class="batch-card-watermark" aria-hidden="true">L4T2</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 2</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L4T2</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+
+          <div class="batch-select-card" data-batch="L4T3" onclick="selectBatchAndGoToToday('L4T3')">
+            <span class="batch-card-watermark" aria-hidden="true">L4T3</span>
+            <div class="batch-card-top">
+              <span class="batch-term-badge">Term 3</span>
+              <span class="batch-active-glow-dot" style="display: none;"></span>
+            </div>
+            <h4 class="batch-card-title">L4T3</h4>
+            <div class="batch-card-cta" style="display: none;"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Hidden routine display element for state compatibility -->
+    <div id="routineDisplayArea" style="display: none;"></div>
+
+  </main>
+
+  <!-- Site Footer (Developed by Hridoy) -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand-meta">
+        <div class="footer-dept-title">
+          <span class="footer-dept-icon-wrapper">
+            <img src="assets/diu_ice_logo.png" alt="DIU ICE Logo" class="footer-dept-logo-img" width="22" height="22">
+          </span>
+          <span>Dept. of Information & Communication Engineering</span>
+        </div>
+        <p class="footer-sub-meta">
+          <span>Daffodil International University</span> &bull;
+          <a href="https://faculty.daffodilvarsity.edu.bd/teachers/ice.html" target="_blank" rel="noopener noreferrer"
+            class="footer-faculty-link">
+            <span>Faculty Directory</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            </svg>
+          </a>
+        </p>
+      </div>
+
+      <!-- Real-Time Live & Total Visitor Counter -->
+      <div class="footer-visitor-wrapper" aria-label="Real-time Visitor Counter">
+        <div class="realtime-visitor-pill" id="realtimeVisitorBadge"
+          title="Real-time Online Visitors & Total Site Visits">
+          <div class="visitor-live-group" title="Currently Active Online Visitors">
+            <span class="visitor-pulse-dot" aria-hidden="true">
+              <span class="pulse-ring"></span>
+              <span class="pulse-core"></span>
+            </span>
+            <span class="visitor-stat-label">Live:</span>
+            <span class="visitor-stat-value" id="liveVisitorCount"><script>try{const l=localStorage.getItem('ice_routine_live_visitors');document.write(l?Number(l).toLocaleString():'1');}catch(e){document.write('1');}</script><noscript>1</noscript></span>
+          </div>
+          <span class="visitor-pill-divider" aria-hidden="true"></span>
+          <div class="visitor-total-group" title="Total Website Visits (Recorded in Real-time)">
+            <svg class="visitor-eye-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span class="visitor-stat-label">Total Visits:</span>
+            <span class="visitor-stat-value" id="totalVisitorCount"><script>try{const v=localStorage.getItem('ice_routine_total_visits');document.write(v?Number(v).toLocaleString():'2,600');}catch(e){document.write('2,600');}</script><noscript>2,600</noscript></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-credit-group">
+        <a href="https://github.com/foysalhridoy" target="_blank" rel="noopener noreferrer" class="cyber-dev-pill"
+          title="Developed by Hridoy - GitHub">
+          <span class="cyber-stream-border"></span>
+          <span class="cyber-spark-glow"></span>
+          <span class="cyber-bolt-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round"
+              stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+          </span>
+          <span class="cyber-dev-text">Developed by <strong>Hridoy</strong></span>
+          <svg class="cyber-github-mini" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Floating Bottom Navigation Bar (iPhone Style Glassmorphism) -->
+  <nav class="bottom-floating-navbar no-print" id="bottomFloatingNavbar" aria-label="Bottom Navigation">
+    <div class="navbar-dock-container">
+      <!-- 1. Batch Tab (Active) -->
+      <a href="batch.html" class="nav-dock-item active" id="navTabBatch" data-tab="batch" title="Select Batch">
+        <div class="dock-item-pill">
+          <svg class="dock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="7" height="7" x="3" y="3" rx="1.5" />
+            <rect width="7" height="7" x="14" y="3" rx="1.5" />
+            <rect width="7" height="7" x="14" y="14" rx="1.5" />
+            <rect width="7" height="7" x="3" y="14" rx="1.5" />
+          </svg>
+          <span class="dock-label">Batch</span>
+        </div>
+      </a>
+
+      <!-- 2. Today Tab -->
+      <a href="index.html" class="nav-dock-item" id="navTabToday" data-tab="today" title="Today's Live Routine">
+        <div class="dock-item-pill">
+          <svg class="dock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+            <line x1="16" x2="16" y1="2" y2="6" />
+            <line x1="8" x2="8" y1="2" y2="6" />
+            <line x1="3" x2="21" y1="10" y2="10" />
+            <circle cx="12" cy="15" r="2" />
+          </svg>
+          <span class="dock-label">Today</span>
+        </div>
+      </a>
+
+      <!-- 3. All Days Tab -->
+      <a href="alldays.html" class="nav-dock-item" id="navTabAllDays" data-tab="alldays"
+        title="All Days Weekly Routine">
+        <div class="dock-item-pill">
+          <svg class="dock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+            <line x1="16" x2="16" y1="2" y2="6" />
+            <line x1="8" x2="8" y1="2" y2="6" />
+            <line x1="3" x2="21" y1="10" y2="10" />
+            <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" />
+          </svg>
+          <span class="dock-label">All Days</span>
+        </div>
+      </a>
+
+      <!-- 4. Teacher Details Tab -->
+      <a href="teachers.html" class="nav-dock-item" id="navTabTeacher" data-tab="teacher"
+        title="Faculty & Teacher Details">
+        <div class="dock-item-pill">
+          <svg class="dock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span class="dock-label">Teachers</span>
+        </div>
+      </a>
+
+      <!-- 5. Update Routine Tab -->
+      <a href="update.html" class="nav-dock-item" id="navTabUpdate" data-tab="update"
+        title="Update Routine / Change Sheet Link">
+        <div class="dock-item-pill">
+          <svg class="dock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 15.5-6.36L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.36L3 16M3 21v-5h5" />
+          </svg>
+          <span class="dock-label">Update</span>
+        </div>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="courses.js"></script>
+  <script src="parser.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
