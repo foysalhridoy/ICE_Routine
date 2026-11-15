@@ -3262,18 +3262,18 @@ function setupEventListeners() {
   // Dynamic Header Shrink on Scroll (Morphs into floating rounded pill) - Ultra-smooth 60fps/120fps with rAF and Hysteresis
   let scrollTicking = false;
   let isHeaderScrolled = false;
+  const headerEl = document.querySelector(".site-header");
   window.addEventListener("scroll", () => {
     if (!scrollTicking) {
       window.requestAnimationFrame(() => {
-        const header = document.querySelector(".site-header");
-        if (header) {
+        if (headerEl) {
           const scrollY = window.scrollY || window.pageYOffset || 0;
-          if (!isHeaderScrolled && scrollY > 32) {
+          if (!isHeaderScrolled && scrollY > 40) {
             isHeaderScrolled = true;
-            header.classList.add("scrolled");
-          } else if (isHeaderScrolled && scrollY < 16) {
+            headerEl.classList.add("scrolled");
+          } else if (isHeaderScrolled && scrollY < 15) {
             isHeaderScrolled = false;
-            header.classList.remove("scrolled");
+            headerEl.classList.remove("scrolled");
           }
         }
         scrollTicking = false;
