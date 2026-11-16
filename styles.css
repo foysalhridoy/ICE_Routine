@@ -4184,17 +4184,25 @@ img {
 /* Modern Header */
 .sync-panel-header-modern {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.65rem;
 }
 
 .sync-header-left {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.sync-header-badges-row {
+  display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.55rem;
   flex-wrap: wrap;
 }
 
@@ -4211,15 +4219,18 @@ img {
   border-radius: var(--radius-pill);
   box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
   letter-spacing: 0.01em;
+  flex-shrink: 0;
 }
 
 .sync-modern-title {
-  font-size: 1.28rem;
+  font-size: clamp(1.15rem, 2.4vw, 1.35rem);
   font-weight: 800;
   color: #0f172a;
   margin: 0;
   letter-spacing: -0.02em;
   font-family: var(--font-sans);
+  line-height: 1.25;
+  word-break: break-word;
 }
 
 .sync-semester-chip {
@@ -4231,6 +4242,13 @@ img {
   padding: 0.15rem 0.5rem;
   border-radius: var(--radius-pill);
   letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.sync-header-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .sync-header-right .sheet-status-tag {
@@ -4246,6 +4264,7 @@ img {
   border: 1px solid #bbf7d0;
   box-shadow: 0 2px 6px rgba(22, 101, 52, 0.06);
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .status-pulse-dot {
@@ -4495,37 +4514,110 @@ img {
     padding: 1.25rem 1.05rem;
     border-radius: 16px;
   }
+  .sync-panel-header-modern {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin-bottom: 0.55rem;
+  }
+  .sync-header-left {
+    width: 100%;
+    gap: 0.4rem;
+  }
+  .sync-header-badges-row {
+    width: 100%;
+    gap: 0.45rem;
+  }
+  .sync-modern-title {
+    font-size: clamp(1.1rem, 4.6vw, 1.26rem);
+    width: 100%;
+    line-height: 1.25;
+  }
+  .sync-header-right {
+    width: 100%;
+  }
+  .sync-header-right .sheet-status-tag {
+    font-size: 0.74rem;
+    padding: 0.28rem 0.75rem;
+  }
+  .sync-modern-desc {
+    font-size: 0.8rem;
+    margin-bottom: 0.95rem;
+  }
   .sync-unified-box {
     flex-direction: column;
     align-items: stretch;
     gap: 0.55rem;
   }
+  .sync-input-wrap {
+    padding: 0.45rem 0.65rem;
+    gap: 0.5rem;
+  }
+  .sync-modern-input {
+    min-width: 0;
+    font-size: 0.82rem;
+  }
+  .sync-pill-btn {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.7rem;
+  }
   .sync-modern-fetch-btn {
     width: 100%;
     justify-content: center;
+    padding: 0.65rem 1.15rem !important;
   }
   .sync-secondary-bar {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.65rem;
+    gap: 0.55rem;
   }
   .sync-secondary-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     width: 100%;
   }
   .sync-secondary-action-btn,
-  .sync-secondary-link {
-    flex: 1;
+  .sync-secondary-link,
+  .sync-reset-minimal-btn {
+    width: 100%;
     justify-content: center;
+    box-sizing: border-box;
+    text-align: center;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.76rem;
   }
   .sync-reset-minimal-btn {
     margin-left: 0;
-    justify-content: center;
-    width: 100%;
   }
   .sync-feature-strip-modern {
     gap: 0.65rem;
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .update-sync-panel {
+    padding: 1.1rem 0.85rem;
+    border-radius: 14px;
+    margin-top: 0.75rem;
+    margin-bottom: 1.75rem;
+  }
+  .sync-modern-title {
+    font-size: 1.1rem;
+  }
+  .sync-sheets-badge {
+    font-size: 0.68rem;
+    padding: 0.18rem 0.52rem;
+  }
+  .sync-semester-chip {
+    font-size: 0.66rem;
+    padding: 0.12rem 0.45rem;
+  }
+  .sync-header-right .sheet-status-tag {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.65rem;
   }
 }
 
