@@ -602,7 +602,7 @@ function getFacultyInfo(initial, courseCode = "") {
   if (["COMMITTEE", "DEPT", "ICE"].includes(clean)) {
     return {
       initial: clean,
-      name: clean === "ICE" ? "Department of ICE" : "Departmental Academic Committee",
+      name: (clean === "ICE" || clean === "DEPT") ? "Department of ICE" : "Departmental Academic Committee",
       designation: "Course Evaluation Panel",
       department: "Department of ICE",
       profileUrl: "https://faculty.daffodilvarsity.edu.bd/teachers/ice",

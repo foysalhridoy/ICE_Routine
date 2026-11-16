@@ -730,9 +730,20 @@ function renderNewsTicker(updates = []) {
  * Handle clicking on a ticker update item
  */
 function handleTickerItemClick(batch, day) {
-  if (!batch || !state.routine || !state.routine.batches[batch]) return;
-
+  if (!batch) return;
   state.selectedBatch = batch;
+  try {
+    localStorage.setItem("ice_user_batch", batch);
+  } catch (e) {}
+
+  const current = detectCurrentPage().view;
+  if (current === "batch" || current === "update" || current === "teacher") {
+    window.location.href = "index.html";
+    return;
+  }
+
+  if (!state.routine || !state.routine.batches[batch]) return;
+
   state.activeView = "batch";
   updateViewTabs();
   renderBatchChips();
@@ -1202,66 +1213,37 @@ function renderStats() {
 
 }
 
-function updateLiveDateBadge() {
-  const el = document.getElementById("headerDateText");
-  if (!el) return;
-  try {
-    const now = new Date();
-    const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(now);
-    const dayMonth = `${now.getDate()} ${new Intl.DateTimeFormat('en-US', { month: 'short' }).format(now)}`;
-    el.textContent = `${dayName}, ${dayMonth}`;
-  } catch (e) {
-    el.textContent = "Today's Routine";
-  }
-}
-
-/**
- * Real-time Digital Clock for Navbar
- */
-function updateDigitalClock() {
-  const timeEl = document.getElementById("digitalClockTime");
-  if (!timeEl) return;
-  try {
-    const now = new Date();
-    let hours = now.getHours();
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const formattedHours = String(hours).padStart(2, '0');
-    timeEl.innerHTML = `${formattedHours}:${minutes}:${seconds} <span class="clock-ampm">${ampm}</span>`;
-  } catch (e) {
-    timeEl.textContent = new Date().toLocaleTimeString();
-  }
-}
-
 /**
  * Open Faculty Modal
  */
 function openFacultyModal(initial, courseCode = "") {
+  if (!elements.facultyModalOverlay) return;
   const fac = getFacultyInfo(initial, courseCode);
   if (!fac) return;
 
   state.currentModalInitial = initial;
 
-  elements.facultyModalInitial.textContent = fac.initial || initial;
-  elements.facultyModalName.textContent = fac.name;
-  elements.facultyModalDesignation.textContent = fac.designation;
-  elements.facultyModalDept.textContent = fac.department || "Department of ICE";
+  if (elements.facultyModalInitial) elements.facultyModalInitial.textContent = fac.initial || initial;
+  if (elements.facultyModalName) elements.facultyModalName.textContent = fac.name;
+  if (elements.facultyModalDesignation) elements.facultyModalDesignation.textContent = fac.designation;
+  if (elements.facultyModalDept) elements.facultyModalDept.textContent = fac.department || "Department of ICE";
   
-  if (fac.photoUrl) {
-    elements.facultyModalPhoto.src = fac.photoUrl;
-    elements.facultyModalPhoto.style.display = "block";
-  } else {
-    elements.facultyModalPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.name)}&background=0284c7&color=fff&bold=true`;
+  if (elements.facultyModalPhoto) {
+    if (fac.photoUrl) {
+      elements.facultyModalPhoto.src = fac.photoUrl;
+      elements.facultyModalPhoto.style.display = "block";
+    } else {
+      elements.facultyModalPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.name)}&background=0284c7&color=fff&bold=true`;
+    }
   }
 
-  if (fac.profileUrl) {
-    elements.facultyModalLink.href = fac.profileUrl;
-    elements.facultyModalLink.style.display = "inline";
-  } else {
-    elements.facultyModalLink.style.display = "none";
+  if (elements.facultyModalLink) {
+    if (fac.profileUrl) {
+      elements.facultyModalLink.href = fac.profileUrl;
+      elements.facultyModalLink.style.display = "inline";
+    } else {
+      elements.facultyModalLink.style.display = "none";
+    }
   }
 
   let count = 0;
@@ -1273,12 +1255,15 @@ function openFacultyModal(initial, courseCode = "") {
       });
     });
   }
-  elements.facultyModalClassesCount.textContent = `${count} class${count === 1 ? '' : 'es'} in ${state.selectedBatch}`;
+  if (elements.facultyModalClassesCount) {
+    elements.facultyModalClassesCount.textContent = `${count} class${count === 1 ? '' : 'es'} in ${state.selectedBatch}`;
+  }
 
   elements.facultyModalOverlay.classList.add("active");
 }
 
 function closeFacultyModal() {
+  if (!elements.facultyModalOverlay) return;
   elements.facultyModalOverlay.classList.remove("active");
 }
 
@@ -2272,7 +2257,11 @@ function renderTeacherView() {
   });
 
   const teachers = Array.from(teacherSet).sort();
-  const selectedTeacher = state.selectedTeacher || teachers[0] || "AKP";
+  let savedTeacher = null;
+  try {
+    savedTeacher = localStorage.getItem("ice_selected_teacher");
+  } catch (e) {}
+  const selectedTeacher = state.selectedTeacher || (teachers.includes(savedTeacher) ? savedTeacher : null) || teachers[0] || "AKP";
   state.selectedTeacher = selectedTeacher;
 
   const fac = getFacultyInfo(selectedTeacher) || {
@@ -2304,7 +2293,14 @@ function renderTeacherView() {
     if (!m) return 9999;
     let h = parseInt(m[1], 10);
     const min = parseInt(m[2], 10);
-    const period = m[3];
+    let period = m[3];
+    if (!period) {
+      if ((h >= 1 && h <= 7) || h === 12) {
+        period = "PM";
+      } else {
+        period = "AM";
+      }
+    }
     if (period === "PM" && h < 12) h += 12;
     if (period === "AM" && h === 12) h = 0;
     return h * 60 + min;
@@ -2504,11 +2500,17 @@ function renderTeacherView() {
 
   document.getElementById("teacherSelectDropdown")?.addEventListener("change", (e) => {
     state.selectedTeacher = e.target.value;
+    try {
+      localStorage.setItem("ice_selected_teacher", e.target.value);
+    } catch (err) {}
     renderTeacherView();
   });
 }
 window.selectTeacherQuick = function(initial) {
   state.selectedTeacher = initial;
+  try {
+    localStorage.setItem("ice_selected_teacher", initial);
+  } catch (err) {}
   renderTeacherView();
 };
 
@@ -2552,7 +2554,14 @@ function renderRoomView() {
     if (!m) return 9999;
     let h = parseInt(m[1], 10);
     const min = parseInt(m[2], 10);
-    const period = m[3];
+    let period = m[3];
+    if (!period) {
+      if ((h >= 1 && h <= 7) || h === 12) {
+        period = "PM";
+      } else {
+        period = "AM";
+      }
+    }
     if (period === "PM" && h < 12) h += 12;
     if (period === "AM" && h === 12) h = 0;
     return h * 60 + min;
@@ -3099,12 +3108,33 @@ function copyRoutineAsText() {
   text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `Developed by Hridoy (https://github.com/foysalhridoy)`;
 
-  navigator.clipboard.writeText(text).then(() => {
-    showToast("Copied!", "success");
-  }).catch(() => {
-    showToast("Failed", "error");
-  });
+  const copyFallback = () => {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      showToast("Copied!", "success");
+    } catch (e) {
+      showToast("Failed", "error");
+    }
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast("Copied!", "success");
+    }).catch(() => {
+      copyFallback();
+    });
+  } else {
+    copyFallback();
+  }
 }
+window.copyRoutineAsText = copyRoutineAsText;
 
 /**
  * EXPORT: iCalendar (.ics)
@@ -3126,19 +3156,55 @@ function exportToCalendar() {
     "Thursday": "TH"
   };
 
+  const dayDateMap = {
+    "Saturday": "20260905",
+    "Sunday": "20260906",
+    "Monday": "20260907",
+    "Tuesday": "20260901",
+    "Wednesday": "20260902",
+    "Thursday": "20260903"
+  };
+
+  const parseTimeForICS = (timeStr) => {
+    if (!timeStr) return { start: "090000", end: "103000" };
+    const parts = timeStr.split(/[-–—]/);
+    if (parts.length < 2) return { start: "090000", end: "103000" };
+
+    const parsePart = (str) => {
+      const m = str.trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+      if (!m) return null;
+      let h = parseInt(m[1], 10);
+      const min = m[2];
+      let ap = (m[3] || "").toUpperCase();
+      if (!ap) {
+        if ((h >= 1 && h <= 7) || h === 12) ap = "PM";
+        else ap = "AM";
+      }
+      if (ap === "PM" && h < 12) h += 12;
+      if (ap === "AM" && h === 12) h = 0;
+      return `${String(h).padStart(2, "0")}${min}00`;
+    };
+
+    const s = parsePart(parts[0]) || "090000";
+    const e = parsePart(parts[1]) || "103000";
+    return { start: s, end: e };
+  };
+
   state.routine.days.forEach(day => {
     const classes = sched[day] || [];
     const byDay = dayMap[day];
+    const baseDate = dayDateMap[day] || "20260901";
 
     classes.forEach(c => {
       const course = getCourseInfo(c.courseCode);
+      const times = parseTimeForICS(c.time);
       ics += "BEGIN:VEVENT\n";
       ics += `SUMMARY:${c.courseCode} - ${course.title}\n`;
       ics += `LOCATION:Room ${c.room}, DIU\n`;
       ics += `DESCRIPTION:Teacher: ${c.teacher}, Batch: ${batch}\n`;
       ics += `RRULE:FREQ=WEEKLY;BYDAY=${byDay}\n`;
-      ics += `DTSTART;TZID=Asia/Dhaka:20260901T090000\n`;
-      ics += `DTEND;TZID=Asia/Dhaka:20260901T103000\n`;
+      ics += `DTSTART;TZID=Asia/Dhaka:${baseDate}T${times.start}\n`;
+      ics += `DTEND;TZID=Asia/Dhaka:${baseDate}T${times.end}\n`;
       ics += "END:VEVENT\n";
     });
   });
@@ -3154,6 +3220,7 @@ function exportToCalendar() {
   URL.revokeObjectURL(url);
   showToast("Exported!", "success");
 }
+window.exportToCalendar = exportToCalendar;
 
 /**
  * RENDER OFFICIAL COURSE SYLLABUS / CURRICULUM VIEW
@@ -3431,8 +3498,12 @@ function setupEventListeners() {
 
   // Bottom Floating Navbar Click Listener (Tickify style)
   document.querySelectorAll(".nav-dock-item").forEach(item => {
-    item.addEventListener("click", () => {
+    item.addEventListener("click", (e) => {
       const tab = item.dataset.tab;
+      const current = detectCurrentPage().view;
+      if (current === tab) {
+        e.preventDefault();
+      }
       handleBottomNavClick(tab);
     });
   });
@@ -3455,14 +3526,21 @@ function setupEventListeners() {
   elements.facultyModalOverlay?.addEventListener("click", (e) => {
     if (e.target === elements.facultyModalOverlay) closeFacultyModal();
   });
-  elements.btnFacultyViewAllClasses?.addEventListener("click", () => {
+  elements.btnFacultyViewAllClasses?.addEventListener("click", (e) => {
+    e.preventDefault();
     closeFacultyModal();
     if (state.currentModalInitial) {
       state.selectedTeacher = state.currentModalInitial;
-      state.activeView = "teacher";
-      updateViewTabs();
-      renderCurrentView();
-      elements.routineDisplayArea?.scrollIntoView({ behavior: "smooth" });
+      try {
+        localStorage.setItem("ice_selected_teacher", state.currentModalInitial);
+      } catch (err) {}
+      const current = detectCurrentPage().view;
+      if (current !== "teacher") {
+        window.location.href = "teachers.html";
+      } else {
+        renderTeacherView();
+        elements.routineDisplayArea?.scrollIntoView({ behavior: "smooth" });
+      }
     }
   });
 
@@ -3474,13 +3552,13 @@ function setupEventListeners() {
   document.getElementById("btnTodayCloseAction")?.addEventListener("click", closeTodayClassesModal);
   document.getElementById("btnTodayViewFullRoutine")?.addEventListener("click", () => {
     closeTodayClassesModal();
-    setDayFilter("today");
-    if (state.activeView !== "batch") {
-      state.activeView = "batch";
-      updateViewTabs();
-      renderCurrentView();
+    const current = detectCurrentPage().view;
+    if (current !== "alldays") {
+      window.location.href = "alldays.html";
+    } else {
+      setDayFilter("all");
+      elements.routineDisplayArea?.scrollIntoView({ behavior: "smooth" });
     }
-    elements.routineDisplayArea?.scrollIntoView({ behavior: "smooth" });
   });
   document.getElementById("todayModalOverlay")?.addEventListener("click", (e) => {
     if (e.target.id === "todayModalOverlay") closeTodayClassesModal();
@@ -3587,6 +3665,21 @@ window.updateLiveDateBadge = updateLiveDateBadge;
 
 function updateDigitalClock() {
   updateLiveDateBadge();
+  const timeEl = document.getElementById("digitalClockTime");
+  if (!timeEl) return;
+  try {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, '0');
+    timeEl.innerHTML = `${formattedHours}:${minutes}:${seconds} <span class="clock-ampm">${ampm}</span>`;
+  } catch (e) {
+    timeEl.textContent = new Date().toLocaleTimeString();
+  }
 }
 window.updateDigitalClock = updateDigitalClock;
 

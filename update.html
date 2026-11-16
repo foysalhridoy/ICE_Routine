@@ -242,7 +242,7 @@
             </span>
             <span class="visitor-stat-label">Live:</span>
             <span class="visitor-stat-value" id="liveVisitorCount">
-              <script>try{const  l =loca l Stora ge. g etItem('ice_routine_ live_visitors'                ber ( l).toLo c aleString():'1');}catch(e){document.write('1');}</script>
+              <script>try{const l=localStorage.getItem('ice_routine_live_visitors');document.write(l?Number(l).toLocaleString():'1');}catch(e){document.write('1');}</script>
               <noscript>1</noscript>
             </span>
           </div>
@@ -255,7 +255,7 @@
             </svg>
             <span class="visitor-stat-label">Total Visits:</span>
             <span class="visitor-stat-value" id="totalVisitorCount">
-              <script>try{const   v=localSt o rage. get I tem('ice_routine_total_v isits');document.write(v?Number(v).toLocaleString():'2,600');}catch(e){document.write('2,600');}</script>
+              <script>try{const v=localStorage.getItem('ice_routine_total_visits');document.write(v?Number(v).toLocaleString():'2,600');}catch(e){document.write('2,600');}</script>
               <noscript>2,600</noscript>
             </span>
           </div>

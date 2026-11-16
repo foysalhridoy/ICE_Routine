@@ -5815,7 +5815,7 @@ img {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.76) 0%, rgba(246, 250, 247, 0.62) 50%, rgba(255, 255, 255, 0.74) 100%);
   backdrop-filter: blur(40px) saturate(220%) contrast(102%);
   -webkit-backdrop-filter: blur(40px) saturate(220%) contrast(102%);
-  /* Water Droplet Curvature & Specular Highlight */
+  /* Water Droplet Curvature & Specular Highlight with Animated Glow */
   border: 1.5px solid rgba(255, 255, 255, 0.88);
   border-top: 1.8px solid rgba(255, 255, 255, 0.98);
   border-radius: var(--radius-pill);
@@ -5828,6 +5828,39 @@ img {
   box-sizing: border-box;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: dockNavbarBreathe 4s ease-in-out infinite alternate;
+}
+
+/* Subtle Breathing Border & Glow Animation matching Upper Navbar Header Date Pill */
+@keyframes dockNavbarBreathe {
+  0% {
+    border-color: rgba(255, 255, 255, 0.88);
+    box-shadow: 
+      0 16px 44px -8px rgba(0, 0, 0, 0.14), 
+      0 4px 14px rgba(0, 0, 0, 0.05),
+      inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 2px 0 rgba(0, 0, 0, 0.04),
+      0 0 0 0 rgba(214, 248, 59, 0);
+  }
+  100% {
+    border-color: rgba(16, 185, 129, 0.52);
+    box-shadow: 
+      0 18px 46px -6px rgba(0, 0, 0, 0.16), 
+      0 4px 16px rgba(16, 185, 129, 0.18),
+      0 0 18px rgba(214, 248, 59, 0.22),
+      inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
+      inset 0 0 0 1px rgba(16, 185, 129, 0.25);
+  }
+}
+
+.navbar-dock-container:hover {
+  border-color: rgba(16, 185, 129, 0.7);
+  box-shadow: 
+    0 20px 50px -6px rgba(0, 0, 0, 0.18),
+    0 6px 20px rgba(16, 185, 129, 0.25),
+    0 0 24px rgba(214, 248, 59, 0.32),
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(16, 185, 129, 0.35);
 }
 
 /* Water / Liquid Surface Glare */
@@ -5839,6 +5872,26 @@ img {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.04) 40%, transparent 65%);
   pointer-events: none;
   z-index: 1;
+}
+
+/* Shimmer Ray Sweep matching Upper Navbar Date Pill */
+.navbar-dock-container::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(214, 248, 59, 0.22), rgba(16, 185, 129, 0.22), transparent);
+  transform: skewX(-20deg);
+  animation: dockNavbarShimmer 6s infinite ease-in-out 1s;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes dockNavbarShimmer {
+  0% { left: -100%; }
+  25%, 100% { left: 160%; }
 }
 
 .nav-dock-item {
