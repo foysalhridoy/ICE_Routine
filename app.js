@@ -1207,8 +1207,9 @@ function updateLiveDateBadge() {
   if (!el) return;
   try {
     const now = new Date();
-    const formatted = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(now);
-    el.textContent = formatted;
+    const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(now);
+    const dayMonth = `${now.getDate()} ${new Intl.DateTimeFormat('en-US', { month: 'short' }).format(now)}`;
+    el.textContent = `${dayName}, ${dayMonth}`;
   } catch (e) {
     el.textContent = "Today's Routine";
   }
@@ -3570,14 +3571,14 @@ function initRealtimeVisitorTracker() {
 function updateLiveDateBadge() {
   const now = new Date();
   const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(now);
-  const formattedDate = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(now);
-  const fullText = `${dayName}, ${formattedDate}`;
+  const dayMonth = `${now.getDate()} ${new Intl.DateTimeFormat('en-US', { month: 'short' }).format(now)}`;
+  const dateMonthText = `${dayName}, ${dayMonth}`;
 
   const headerDateEl = document.getElementById("headerDateText");
-  if (headerDateEl) headerDateEl.textContent = fullText;
+  if (headerDateEl) headerDateEl.textContent = dateMonthText;
 
   const heroDateEl = document.getElementById("heroDateDisplay");
-  if (heroDateEl) heroDateEl.textContent = fullText;
+  if (heroDateEl) heroDateEl.textContent = dateMonthText;
 
   const heroBatch = document.getElementById("heroActiveBatchTag");
   if (heroBatch) heroBatch.textContent = state.selectedBatch;

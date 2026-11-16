@@ -435,59 +435,111 @@ img {
 
 /* Live Today's Date Pill in Navbar (Clickable to open Today's Classes Modal) */
 .header-date-pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.32rem 0.85rem;
-  background: #ffffff;
-  color: #191c19;
-  border: 1px solid rgba(26, 30, 26, 0.12);
+  gap: 0.52rem;
+  padding: 0.35rem 0.95rem;
+  background: linear-gradient(135deg, #ffffff 0%, #fcfbf7 100%);
+  color: #141712;
+  border: 1.5px solid rgba(22, 26, 22, 0.12);
   border-radius: var(--radius-pill);
-  font-size: 0.78rem;
+  font-size: 0.79rem;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
   cursor: pointer;
+  text-decoration: none;
+  overflow: hidden;
+  animation: dateCardBreathe 4s ease-in-out infinite alternate;
+}
+
+/* Subtle Breathing Glow Animation matching Electric Lime & Emerald theme */
+@keyframes dateCardBreathe {
+  0% {
+    border-color: rgba(22, 26, 22, 0.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 0 0 rgba(214, 248, 59, 0);
+  }
+  50% {
+    border-color: rgba(16, 185, 129, 0.38);
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.14), 0 0 0 2px rgba(214, 248, 59, 0.28);
+  }
+  100% {
+    border-color: rgba(214, 248, 59, 0.5);
+    box-shadow: 0 3px 12px rgba(214, 248, 59, 0.18), 0 0 0 1px rgba(16, 185, 129, 0.22);
+  }
+}
+
+/* Subtle Shimmer Ray */
+.header-date-pill::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(214, 248, 59, 0.28), transparent);
+  transform: skewX(-20deg);
+  animation: datePillShimmer 6s infinite ease-in-out 1s;
+  pointer-events: none;
+}
+
+@keyframes datePillShimmer {
+  0% { left: -100%; }
+  25%, 100% { left: 160%; }
 }
 
 .header-date-pill:hover {
-  background: var(--lime-accent);
+  background: var(--lime-accent, #d4ff00);
   color: #141712;
-  border-color: rgba(20, 23, 18, 0.22);
-  transform: translateY(-1.5px);
-  box-shadow: 0 4px 14px rgba(214, 248, 59, 0.45);
+  border-color: #141712;
+  transform: translateY(-1.5px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(214, 248, 59, 0.45), 0 0 0 1px rgba(20, 23, 18, 0.3);
 }
 
 .header-date-icon {
-  color: #191c19;
+  color: #141712;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: dateIconBob 3.5s ease-in-out infinite;
+}
+
+@keyframes dateIconBob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-1px) rotate(-3deg); }
+  60% { transform: translateY(0) rotate(3deg); }
 }
 
 .header-date-pill:hover .header-date-icon {
-  transform: scale(1.1);
+  transform: scale(1.15) rotate(-6deg);
+  animation: none;
 }
 
 .date-pulse-dot {
   position: relative;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
 .date-pulse-core {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--lime-accent);
-  border: 1px solid rgba(20, 23, 18, 0.25);
-  transition: background 0.2s ease;
+  background: var(--lime-accent, #d4ff00);
+  border: 1.5px solid #141712;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 2;
 }
 
 .header-date-pill:hover .date-pulse-core {
   background: #141712;
+  border-color: #141712;
 }
 
 .date-pulse-ring {
@@ -495,19 +547,20 @@ img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: var(--lime-accent);
-  animation: datePing 2s infinite;
+  background: #10b981;
+  animation: datePing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  z-index: 1;
 }
 
 @keyframes datePing {
-  0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(2.8); opacity: 0; }
+  0% { transform: scale(1); opacity: 0.85; }
+  100% { transform: scale(3); opacity: 0; }
 }
 
 .header-date-text {
   font-family: var(--font-sans);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 750;
+  letter-spacing: -0.015em;
   white-space: nowrap;
 }
 
@@ -538,28 +591,6 @@ img {
   color: var(--text-muted);
 }
 
-/* Live Date Pill */
-.header-date-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.95rem;
-  background: #ffffff;
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-pill);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-body);
-  box-shadow: var(--shadow-xs);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.header-date-pill:hover {
-  background: var(--card-bg-subtle);
-  border-color: var(--card-border-hover);
-  transform: translateY(-1px);
-}
 
 /* Live Beacon Indicator */
 .live-dot-beacon {
