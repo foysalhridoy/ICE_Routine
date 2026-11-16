@@ -100,27 +100,21 @@
     <!-- 2. Active Department Routine Sync & Source Panel -->
     <section class="update-sync-panel no-print">
 
-      <!-- Panel Header & Status -->
-      <div class="sync-panel-header">
-        <div class="sync-header-brand">
-          <div class="sync-sheets-icon-wrap" title="Google Sheets Integration">
-            <svg class="sheets-svg-icon" viewBox="0 0 24 24" width="26" height="26">
+      <!-- Clean Modern Header -->
+      <div class="sync-panel-header-modern">
+        <div class="sync-header-left">
+          <div class="sync-sheets-badge" title="Connected via Google Sheets Cloud API">
+            <svg class="sheets-svg-icon" viewBox="0 0 24 24" width="16" height="16">
               <path fill="#0F9D58" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" />
               <path fill="#87CEAB" d="M14 2v6h6" />
               <path fill="#ffffff" d="M8 13h8v1.5H8zm0 3h8v1.5H8zm0-6h5v1.5H8z" />
             </svg>
+            <span>Google Sheets</span>
           </div>
-          <div class="sync-header-text">
-            <div class="sync-title-row">
-              <h2 class="sync-panel-title">Active Google Sheet Source</h2>
-              <span class="sync-badge-live">Live Cloud</span>
-            </div>
-            <p class="sync-panel-subtitle">Connected departmental spreadsheet &bull; Synchronized across all 12 batches
-            </p>
-          </div>
+          <h2 class="sync-modern-title">Active Google Sheet Source</h2>
         </div>
 
-        <div class="sync-header-meta">
+        <div class="sync-header-right">
           <span class="sheet-status-tag" id="sheetStatus">
             <span class="status-pulse-dot"></span>
             <span>Live Synced from Cloud</span>
@@ -128,97 +122,59 @@
         </div>
       </div>
 
-      <!-- Quick Metadata Strip -->
-      <div class="sync-meta-strip">
-        <div class="sync-meta-item">
-          <span class="meta-label">Department:</span>
-          <span class="meta-value">DIU ICE</span>
-        </div>
-        <div class="sync-meta-divider"></div>
-        <div class="sync-meta-item">
-          <span class="meta-label">Semester:</span>
-          <span class="meta-value">Fall 2026</span>
-        </div>
-        <div class="sync-meta-divider"></div>
-        <div class="sync-meta-item">
-          <span class="meta-label">Format:</span>
-          <span class="meta-value">Master Timetable (.xlsx / Sheets)</span>
-        </div>
-        <div class="sync-meta-divider"></div>
-        <div class="sync-meta-item">
-          <span class="meta-label">Engine:</span>
-          <span class="meta-value highlight">Instant Client Parse</span>
-        </div>
-      </div>
+      <p class="sync-modern-desc">
+        Connected departmental spreadsheet for <strong>DIU ICE (Fall 2026)</strong> &bull; Changes here synchronize live across all 12 batches.
+      </p>
 
-      <!-- URL Input Section -->
-      <div class="sync-input-section">
-        <div class="sync-input-header">
-          <label for="sheetUrlInput" class="sync-input-label">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-            </svg>
-            <span>Google Spreadsheet URL</span>
-          </label>
-          <a href="https://docs.google.com/spreadsheets/d/12o-rgXoLFpLKPMNdpqNJwF8y2r1CzgEx45TsUJafVTY/edit?pli=1&gid=1763419013#gid=1763419013"
-            target="_blank" rel="noopener noreferrer" class="sync-view-sheet-btn" id="openExternalSheetBtn"
-            title="Open connected spreadsheet in new tab">
-            <span>Open in Google Sheets</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-            </svg>
-          </a>
-        </div>
-
-        <div class="sync-input-bar">
-          <div class="sync-bar-icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-            </svg>
-          </div>
-          <input type="url" id="sheetUrlInput" class="sync-url-field"
-            placeholder="Paste Google Sheets link here (e.g. https://docs.google.com/spreadsheets/d/...)"
+      <!-- Unified Modern Input & Sync Bar -->
+      <div class="sync-unified-box">
+        <div class="sync-input-wrap">
+          <svg class="sync-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
+          <input type="url" id="sheetUrlInput" class="sync-modern-input"
+            placeholder="Paste Google Sheets link (https://docs.google.com/spreadsheets/d/...)"
             spellcheck="false" autocomplete="off" />
-          <button type="button" class="sync-field-clear-btn" id="btnPasteSheetUrl" title="Paste link from clipboard">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" class="sync-pill-btn" id="btnPasteSheetUrl" title="Paste link from clipboard">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
               <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
             </svg>
             <span>Paste</span>
           </button>
         </div>
-      </div>
 
-      <!-- Action Buttons Row -->
-      <div class="sync-actions-row">
-        <button class="btn btn-primary sync-primary-btn" id="btnFetchSheet"
-          title="Fetch and sync routine from the Google Sheet above">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-            stroke-linecap="round" stroke-linejoin="round">
+        <button class="btn btn-primary sync-modern-fetch-btn" id="btnFetchSheet" title="Fetch and sync routine from Google Sheets">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 12a9 9 0 0 1 15.5-6.36L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.36L3 16M3 21v-5h5" />
           </svg>
           <span>Fetch &amp; Sync</span>
         </button>
+      </div>
 
-        <button class="btn btn-secondary sync-upload-btn" id="btnUploadFile"
-          title="Upload local Excel (.xlsx, .xls) or CSV routine file">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-          </svg>
-          <span>Upload File (.xlsx)</span>
-        </button>
+      <!-- Clean Minimal Secondary Actions Row -->
+      <div class="sync-secondary-bar">
+        <div class="sync-secondary-left">
+          <button class="sync-secondary-action-btn" id="btnUploadFile" title="Upload local Excel (.xlsx, .xls) or CSV routine file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+            </svg>
+            <span>Upload File (.xlsx)</span>
+          </button>
 
-        <button type="button" class="sync-reset-btn" id="btnResetOfficialSheet"
-          title="Reset URL back to the official DIU ICE Fall 2026 sheet">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
+          <a href="https://docs.google.com/spreadsheets/d/12o-rgXoLFpLKPMNdpqNJwF8y2r1CzgEx45TsUJafVTY/edit?pli=1&gid=1763419013#gid=1763419013"
+            target="_blank" rel="noopener noreferrer" class="sync-secondary-link" id="openExternalSheetBtn"
+            title="Open connected spreadsheet in new tab">
+            <span>Open in Google Sheets</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            </svg>
+          </a>
+        </div>
+
+        <button type="button" class="sync-reset-minimal-btn" id="btnResetOfficialSheet" title="Reset URL back to the official DIU ICE Fall 2026 sheet">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
             <path d="M3 3v5h5" />
           </svg>
@@ -228,54 +184,19 @@
 
       <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display: none;" />
 
-      <!-- Modern Visual Feature Guidance Cards -->
-      <div class="sync-guidance-grid">
-        <div class="sync-guide-card">
-          <div class="guide-icon-badge blue">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="2" x2="22" y1="12" y2="12" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
-          </div>
-          <div class="guide-card-content">
-            <h4 class="guide-title">Public View Permission</h4>
-            <p class="guide-desc">The Google Spreadsheet must be set to <strong>"Anyone with the link can view"</strong>
-              so the routine parser can fetch data securely.</p>
-          </div>
+      <!-- Minimal Modern Feature Notes Strip (Clean, Breathable & Low-Density) -->
+      <div class="sync-feature-strip-modern">
+        <div class="feature-strip-item">
+          <span class="feature-strip-dot blue"></span>
+          <span>Public View Permission</span>
         </div>
-
-        <div class="sync-guide-card">
-          <div class="guide-icon-badge green">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-          </div>
-          <div class="guide-card-content">
-            <h4 class="guide-title">Instant Smart Parse</h4>
-            <p class="guide-desc">Automatically parses all 12 batches, teachers, rooms, and multi-hour laboratory
-              sessions with real-time ticker updates.</p>
-          </div>
+        <div class="feature-strip-item">
+          <span class="feature-strip-dot green"></span>
+          <span>Instant 12-Batch Smart Parse</span>
         </div>
-
-        <div class="sync-guide-card">
-          <div class="guide-icon-badge amber">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" x2="8" y1="13" y2="13" />
-              <line x1="16" x2="8" y1="17" y2="17" />
-              <polyline points="10 9 9 9 8 9" />
-            </svg>
-          </div>
-          <div class="guide-card-content">
-            <h4 class="guide-title">Offline File Backup</h4>
-            <p class="guide-desc">No Google Drive access? Simply upload an Excel routine file (<strong>.xlsx</strong> or
-              <strong>.csv</strong>) directly from your device.</p>
-          </div>
+        <div class="feature-strip-item">
+          <span class="feature-strip-dot amber"></span>
+          <span>Offline Excel (.xlsx) Backup</span>
         </div>
       </div>
 
