@@ -1468,19 +1468,58 @@ function openTodayClassesModal(targetBatch = state.selectedBatch) {
 
   if (currentDayName === "Friday" || classesToday.length === 0) {
     container.innerHTML = `
-      <div class="today-zen-offday-card">
-        <div class="zen-offday-top">
-          <span class="zen-icon">${currentDayName === "Friday" ? "🏖️" : "🌱"}</span>
-          <span class="zen-tag">DAILY RITUAL · REST</span>
+      <div class="today-zen-offday-card today-offday-vibe-card is-modal-vibe">
+        <!-- Animated Background Layer: Gaming, Movies, Food, Sleep -->
+        <div class="offday-vibe-bg" aria-hidden="true">
+          <div class="vibe-aura-mesh"></div>
+          <div class="vibe-floating-items">
+            <span class="vibe-float-item item-gaming-1" title="Gaming">🎮</span>
+            <span class="vibe-float-item item-movie-2" title="Popcorn">🍿</span>
+            <span class="vibe-float-item item-food-1" title="Pizza">🍕</span>
+            <span class="vibe-float-item item-sleep-moon" title="Moon">🌙</span>
+            <div class="vibe-zzz-stream">
+              <span class="vibe-zzz z1">z</span>
+              <span class="vibe-zzz z2">z</span>
+              <span class="vibe-zzz z3">Z</span>
+            </div>
+            <span class="vibe-sparkle s1">✨</span>
+            <span class="vibe-sparkle s2">⭐</span>
+          </div>
         </div>
-        <h3 class="zen-title">${currentDayName === "Friday" ? "Happy Friday Weekend!" : "No Classes for " + targetBatch + " Today"}</h3>
-        <p class="zen-desc">
-          ${currentDayName === "Friday" ? "It is the university weekend. Take three deep breaths, review your weekly progress, and recharge." : "You have an official offday today (" + currentDayName + "). Take this time for self-study, relax, or preview the weekly routine."}
-        </p>
-        <div class="zen-action-row">
-          <button class="btn btn-primary btn-sm" onclick="closeTodayClassesModal(); switchBatch('${targetBatch}');">
-            View Full Timetable &rarr;
-          </button>
+
+        <div class="offday-vibe-content">
+          <div class="vibe-status-pill">
+            <span class="vibe-pulse-beacon"></span>
+            <span class="vibe-status-text">OFFDAY VIBES ACTIVATED</span>
+          </div>
+
+          <div class="vibe-hero-emoji-wrap">
+            <span class="vibe-hero-emoji">${currentDayName === "Friday" ? "🏖️" : "🌱"}</span>
+            <div class="vibe-emoji-ring"></div>
+          </div>
+
+          <h3 class="vibe-title">
+            ${currentDayName === "Friday" ? "Happy Friday Weekend!" : "No Classes for " + targetBatch + " Today"}
+          </h3>
+
+          <p class="vibe-tagline">
+            ${currentDayName === "Friday"
+              ? "It is the university weekend! Take three deep breaths, game with friends, binge watch, and recharge."
+              : "You have an official offday today (" + currentDayName + ")! Zero classes scheduled. Take this time to game, eat good food, binge movies, or relax."}
+          </p>
+
+          <div class="vibe-activities-row is-compact">
+            <div class="vibe-activity-chip chip-game"><span class="chip-icon">🎮</span><span>Gaming</span></div>
+            <div class="vibe-activity-chip chip-movie"><span class="chip-icon">🍿</span><span>Movies</span></div>
+            <div class="vibe-activity-chip chip-food"><span class="chip-icon">🍕</span><span>Food</span></div>
+            <div class="vibe-activity-chip chip-sleep"><span class="chip-icon">😴</span><span>Sleep</span></div>
+          </div>
+
+          <div class="zen-action-row" style="margin-top: 0.5rem;">
+            <button class="btn btn-primary btn-sm" onclick="closeTodayClassesModal(); switchBatch('${targetBatch}');">
+              View Full Timetable &rarr;
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -1687,15 +1726,96 @@ function renderBatchRoutine() {
       </div>
     `;
   } else if (isTodayOnly && activeDays.length === 0) {
-    // Handle Today Only Offday / Weekend State
+    // Handle Today Only Offday / Weekend State with Full Animated Vibe Card
     scheduleBodyHtml = `
-      <div class="empty-search-state" style="background: #f8fafc; border: 1px solid var(--card-border);">
-        <div class="empty-icon">${currentDayName === "Friday" ? "🏖️" : "🌴"}</div>
-        <h3>${currentDayName === "Friday" ? "Happy Weekend! It's Friday" : "No Classes for " + batch + " Today (" + currentDayName + ")"}</h3>
-        <p>You have no scheduled classes today. Enjoy your day, review course materials, or view the full week timetable.</p>
-        <button class="btn btn-primary btn-sm" onclick="setDayFilter('all')">
-          View Full Week Timetable &rarr;
-        </button>
+      <div class="today-offday-vibe-card">
+        <!-- Dynamic Animated Ambient Background Layer: Gaming, Movies, Food, Sleep -->
+        <div class="offday-vibe-bg" aria-hidden="true">
+          <div class="vibe-aura-mesh"></div>
+          <div class="vibe-floating-items">
+            <!-- Gaming Elements -->
+            <span class="vibe-float-item item-gaming-1" title="Gaming">🎮</span>
+            <span class="vibe-float-item item-gaming-2" title="Arcade">🕹️</span>
+            <span class="vibe-badge-xp">+100 XP</span>
+
+            <!-- Movie / Streaming Elements -->
+            <span class="vibe-float-item item-movie-1" title="Movie Night">🎬</span>
+            <span class="vibe-float-item item-movie-2" title="Popcorn">🍿</span>
+            <span class="vibe-float-item item-movie-3" title="Streaming">📺</span>
+
+            <!-- Eating / Food Elements -->
+            <span class="vibe-float-item item-food-1" title="Pizza Time">🍕</span>
+            <span class="vibe-float-item item-food-2" title="Warm Ramen">🍜</span>
+            <span class="vibe-float-item item-food-3" title="Coffee Chill">☕</span>
+
+            <!-- Sleeping / Dreaming Elements -->
+            <span class="vibe-float-item item-sleep-moon" title="Moon">🌙</span>
+            <span class="vibe-float-item item-sleep-cloud" title="Cloud">☁️</span>
+            <div class="vibe-zzz-stream">
+              <span class="vibe-zzz z1">z</span>
+              <span class="vibe-zzz z2">z</span>
+              <span class="vibe-zzz z3">Z</span>
+            </div>
+            <span class="vibe-sparkle s1">✨</span>
+            <span class="vibe-sparkle s2">⭐</span>
+            <span class="vibe-sparkle s3">✨</span>
+          </div>
+        </div>
+
+        <!-- Foreground Content -->
+        <div class="offday-vibe-content">
+          <div class="vibe-status-pill">
+            <span class="vibe-pulse-beacon"></span>
+            <span class="vibe-status-text">OFFDAY VIBES ACTIVATED</span>
+          </div>
+
+          <div class="vibe-hero-emoji-wrap">
+            <span class="vibe-hero-emoji">${currentDayName === "Friday" ? "🏖️" : "🌴"}</span>
+            <div class="vibe-emoji-ring"></div>
+          </div>
+
+          <h2 class="vibe-title">
+            ${currentDayName === "Friday" ? "Happy Weekend! It's Friday" : "No Classes for " + batch + " Today"}
+            <span class="vibe-day-sub">(${currentDayName})</span>
+          </h2>
+
+          <p class="vibe-tagline">
+            Zero alarms, zero lectures today! Time to kick back, conquer your gaming backlog, binge your favorite shows, eat good food, and sleep like royalty.
+          </p>
+
+          <!-- 4 Pillar Activities Pills -->
+          <div class="vibe-activities-row">
+            <div class="vibe-activity-chip chip-game">
+              <span class="chip-icon">🎮</span>
+              <span class="chip-label">Rank Push & Gaming</span>
+            </div>
+            <div class="vibe-activity-chip chip-movie">
+              <span class="chip-icon">🍿</span>
+              <span class="chip-label">Movie & Anime Marathon</span>
+            </div>
+            <div class="vibe-activity-chip chip-food">
+              <span class="chip-icon">🍕</span>
+              <span class="chip-label">Good Food & Chill</span>
+            </div>
+            <div class="vibe-activity-chip chip-sleep">
+              <span class="chip-icon">😴</span>
+              <span class="chip-label">Deep Sleep & Relax</span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="vibe-actions-row">
+            <button class="btn btn-primary vibe-action-btn" onclick="setDayFilter('all')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                <line x1="16" x2="16" y1="2" y2="6"/>
+                <line x1="8" x2="8" y1="2" y2="6"/>
+                <line x1="3" x2="21" y1="10" y2="10"/>
+              </svg>
+              <span>View Full Week Timetable &rarr;</span>
+            </button>
+          </div>
+        </div>
       </div>
     `;
   } else if (isCardsMode) {
@@ -1722,9 +1842,22 @@ function renderBatchRoutine() {
               <span class="offday-badge">🌴 Offday</span>
             </div>
             <div class="mobile-offday-body">
+              <div class="day-offday-bg-floaters" aria-hidden="true">
+                <span class="day-bg-game">🎮</span>
+                <span class="day-bg-movie">🎬</span>
+                <span class="day-bg-food">🍕</span>
+                <span class="day-bg-sleep">🌙</span>
+                <span class="day-bg-zzz">z</span>
+              </div>
               <span class="offday-chill-emoji">${chill.emoji}</span>
               <span class="offday-chill-title">${chill.title}</span>
               <span class="offday-chill-sub">${chill.sub}</span>
+              <div class="day-offday-activities-mini">
+                <span class="day-mini-pill">🎮 Game</span>
+                <span class="day-mini-pill">🍿 Movie</span>
+                <span class="day-mini-pill">🍕 Eat</span>
+                <span class="day-mini-pill">😴 Sleep</span>
+              </div>
             </div>
           </div>
         `;
@@ -1807,9 +1940,22 @@ function renderBatchRoutine() {
               <span class="offday-badge">🌴 Offday</span>
             </div>
             <div class="mobile-offday-body">
+              <div class="day-offday-bg-floaters" aria-hidden="true">
+                <span class="day-bg-game">🎮</span>
+                <span class="day-bg-movie">🎬</span>
+                <span class="day-bg-food">🍕</span>
+                <span class="day-bg-sleep">🌙</span>
+                <span class="day-bg-zzz">z</span>
+              </div>
               <span class="offday-chill-emoji">${chill.emoji}</span>
               <span class="offday-chill-title">${chill.title}</span>
               <span class="offday-chill-sub">${chill.sub}</span>
+              <div class="day-offday-activities-mini">
+                <span class="day-mini-pill">🎮 Game</span>
+                <span class="day-mini-pill">🍿 Movie</span>
+                <span class="day-mini-pill">🍕 Eat</span>
+                <span class="day-mini-pill">😴 Sleep</span>
+              </div>
             </div>
           </div>
         `;
